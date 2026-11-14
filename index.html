@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>RakshaChain · Unified Personal Safety & Emergency Response Platform</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                red: '#EA3B52',
+                crimson: '#E11D48',
+                darkRed: '#BE123C',
+                deepRed: '#9F1239',
+                lightRose: '#FFE4E6',
+                softPink: '#FFF1F2',
+                slateDark: '#0F172A',
+                slateMuted: '#64748B'
+              }
+            },
+            fontFamily: {
+              sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            },
+            boxShadow: {
+              'card': '0 8px 30px rgba(0, 0, 0, 0.06)',
+              'sos': '0 0 50px rgba(234, 59, 82, 0.45)',
+              'floating': '0 12px 36px rgba(15, 23, 42, 0.12)'
+            }
+          }
+        }
+      }
+    </script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Leaflet Map CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <style>
+      body {
+        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+        -webkit-tap-highlight-color: transparent;
+      }
+      /* Custom map styling to match the screenshot */
+      .leaflet-container {
+        width: 100%;
+        height: 100%;
+        font-family: inherit;
+        z-index: 1;
+      }
+      .custom-bubble-tooltip {
+        background: #ffffff !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
+        border-radius: 9999px !important;
+        padding: 5px 14px !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12) !important;
+        color: #0F172A !important;
+        font-weight: 600 !important;
+        font-size: 12px !important;
+        white-space: nowrap !important;
+      }
+      .custom-bubble-tooltip::before {
+        display: none !important;
+      }
+      /* Custom pulse keyframes */
+      @keyframes softPulse {
+        0% { transform: scale(0.98); opacity: 0.8; }
+        50% { transform: scale(1.05); opacity: 1; }
+        100% { transform: scale(0.98); opacity: 0.8; }
+      }
+      .animate-soft-pulse {
+        animation: softPulse 2.4s ease-in-out infinite;
+      }
+      @keyframes sirenLight {
+        0%, 100% { opacity: 0.3; transform: scale(0.8); }
+        50% { opacity: 1; transform: scale(1.2); filter: drop-shadow(0 0 12px #38bdf8); }
+      }
+      .animate-siren {
+        animation: sirenLight 0.8s ease-in-out infinite alternate;
+      }
+      /* Hide scrollbars */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-100 text-slate-900 min-h-screen antialiased selection:bg-rose-500 selection:text-white">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
