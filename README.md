@@ -1,4 +1,4 @@
-# RakshaChain (रक्षाChain)
+# Jaagruth (जागृत)
 ### Unified Personal Safety & Emergency Response Platform
 **Build Beyond'26 · Problem Statement 3.1**  
 *Gradient Club, Department of AIML, BMS College of Engineering*  
@@ -7,6 +7,10 @@
 ---
 
 > *"Most safety apps send an alert and hope. Ours runs the whole response: escalation, assignment, tracking, and a tamper-proof record, with privacy built in."*
+
+### 📁 Project Architecture
+- **`/app`**: **Native Android Citizen Application** built with Kotlin, Jetpack Compose, Material Design 3, and OpenStreetMap (osmdroid).
+- **`/website`**: **Authority Command & Surveillance Deck** built with React, Vite, Tailwind CSS, and Google Maps Platform.
 
 ---
 

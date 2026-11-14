@@ -144,7 +144,7 @@ hackathon/
 
 ### Opening the Project in Android Studio
 1. Launch Android Studio.
-2. Select **Open** and select this directory: `/home/hamsaraj/hamsaraj/AndroidStudio/hackathon`.
+2. Select **Open** and choose the `app/` directory from this repository.
 3. Wait for Gradle to sync.
 4. Select `app` in the run configuration drop-down.
 5. Select a connected physical Android device or an Android Emulator (API 26+).
