@@ -136,7 +136,7 @@ export default function AuthorityLoginModal({ onAuthorizeLocation, onClose }) {
               Grant Location Permission
             </h3>
             <p className="text-xs text-slate-500 mt-2 max-w-[320px] mx-auto leading-relaxed">
-              Jagrat requires your device GPS to anchor regional surveillance, calculate ambulance dispatch radii, and evaluate local collision hotspots.
+              Jagrath requires your device GPS to anchor regional surveillance, calculate ambulance dispatch radii, and evaluate local collision hotspots.
             </p>
 
             {geoError && (

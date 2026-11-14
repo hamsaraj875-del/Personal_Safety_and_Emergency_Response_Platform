@@ -75,7 +75,7 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords 
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-base font-black tracking-tight text-slate-900">
-                Jagrat Authority Command
+                Jagrath Authority Command
               </h1>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-[#EA3B52] border border-rose-100">
                 50,000+ DATASET
@@ -209,7 +209,7 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords 
               <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-card">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Fatalities Reduced</span>
                 <span className="text-3xl font-black text-emerald-600 font-mono mt-1 block">-24.6%</span>
-                <span className="text-xs font-medium text-emerald-600 mt-1 block">Following Jagrat patrol staging</span>
+                <span className="text-xs font-medium text-emerald-600 mt-1 block">Following Jagrath patrol staging</span>
               </div>
             </div>
 
@@ -562,7 +562,7 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords 
                   Public Services Saved by 5-Second Buffer
                 </h3>
                 <p className="text-xs text-emerald-800 mt-1 max-w-2xl leading-relaxed">
-                  By requiring a 2-second hold and a 5-second cancel countdown, Jagrat stopped <strong>7,400 accidental calls</strong> from wasting city emergency resources.
+                  By requiring a 2-second hold and a 5-second cancel countdown, Jagrath stopped <strong>7,400 accidental calls</strong> from wasting city emergency resources.
                 </p>
               </div>
               <span className="text-2xl font-black font-mono text-emerald-700 flex-shrink-0">

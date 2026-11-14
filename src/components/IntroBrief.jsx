@@ -28,7 +28,7 @@ export default function IntroBrief({ onComplete }) {
         {/* Highlighted Badge */}
         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold text-white border border-white/25 mb-4 shadow-sm">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
-          <span>Jagrat Safety Network</span>
+          <span>Jagrath Safety Network</span>
         </div>
 
         {/* Highlighted Main Heading */}

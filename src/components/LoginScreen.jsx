@@ -161,7 +161,7 @@ export default function LoginScreen({ onLoginSuccess }) {
           <ShieldCheck className="w-5 h-5" />
         </div>
         <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-          Welcome to Jagrat
+          Welcome to Jagrath
         </h2>
         <p className="text-xs text-slate-500 mt-1 leading-relaxed">
           Create or log in to your personal emergency safety profile.
@@ -318,7 +318,7 @@ export default function LoginScreen({ onLoginSuccess }) {
           type="submit"
           className="w-full mt-2 py-3.5 bg-[#EA3B52] hover:bg-[#d92d44] text-white font-bold rounded-2xl text-xs flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.98]"
         >
-          <span>Continue to Jagrat</span>
+          <span>Continue to Jagrath</span>
           <ArrowRight className="w-4 h-4" />
         </button>
       </form>

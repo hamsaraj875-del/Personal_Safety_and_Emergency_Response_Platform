@@ -1,6 +1,6 @@
 {
-  "appId": "com.jagrat.safety",
-  "appName": "Jagrat Safety",
+  "appId": "com.jagrath.safety",
+  "appName": "Jagrath Safety",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"

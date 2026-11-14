@@ -59,7 +59,7 @@ export default function LocationPermissionModal({ onLocationAcquired, onClose })
           Allow Device Location
         </h3>
         <p className="text-xs text-slate-500 mt-1 max-w-[280px] leading-relaxed">
-          Jagrat requires real-time GPS access to dispatch nearby responders to your exact spot and map surrounding emergency hubs.
+          Jagrath requires real-time GPS access to dispatch nearby responders to your exact spot and map surrounding emergency hubs.
         </p>
 
         {/* Benefits Box */}

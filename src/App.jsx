@@ -82,7 +82,7 @@ export default function App() {
         actorRole: "system",
         eventType: "PLATFORM_INIT",
         payload: {
-          platform: "Jagrat Safety Network",
+          platform: "Jagrath Safety Network",
           device: "Citizen Mobile Node",
           status: "PROTECTED_READY"
         }
@@ -414,7 +414,7 @@ export default function App() {
           <div className="w-full max-w-[390px] mb-3 flex items-center justify-between px-3.5 py-1.5 bg-white/90 backdrop-blur-md rounded-2xl shadow-sm border border-slate-200 text-xs">
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-[#EA3B52] animate-pulse" />
-              <span className="font-bold text-slate-800 text-[11px]">Jagrat Mobile</span>
+              <span className="font-bold text-slate-800 text-[11px]">Jagrath Mobile</span>
             </div>
 
             {/* Quick Actions / Mode Toggles */}

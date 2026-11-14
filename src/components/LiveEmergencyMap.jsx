@@ -230,11 +230,10 @@ export default function LiveEmergencyMap({
       <div className="absolute top-2.5 left-2.5 z-[1000] flex items-center gap-1 bg-white/95 backdrop-blur-md px-1.5 py-1 rounded-full shadow-md border border-slate-200 text-[10px] font-bold">
         <button
           onClick={() => setEngine('emergency')}
-          className={`px-2 py-0.5 rounded-full transition-all ${
-            engine === 'emergency'
+          className={`px-2 py-0.5 rounded-full transition-all ${engine === 'emergency'
               ? 'bg-[#EA3B52] text-white shadow-xs'
               : 'text-slate-600 hover:text-slate-900'
-          }`}
+            }`}
           title="Zero-Watermark High Performance Emergency Map"
         >
           🗺️ Live Map (Active)
@@ -242,11 +241,10 @@ export default function LiveEmergencyMap({
 
         <button
           onClick={() => setEngine('google')}
-          className={`px-2 py-0.5 rounded-full transition-all ${
-            engine === 'google'
+          className={`px-2 py-0.5 rounded-full transition-all ${engine === 'google'
               ? 'bg-[#EA3B52] text-white shadow-xs'
               : 'text-slate-600 hover:text-slate-900'
-          }`}
+            }`}
           title="Google Maps Platform Engine"
         >
           🌐 Google Maps
