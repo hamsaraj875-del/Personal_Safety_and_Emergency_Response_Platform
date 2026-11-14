@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, Send, X, Mic, CheckCircle } from 'lucide-react';
+import { AlertCircle, Send, X, Mic } from 'lucide-react';
 
-export default function CancelWindowModal({ onConfirmDispatch, onAbort, initialSeconds = 5, onAITriageNote }) {
+export default function CancelWindowModal({ onConfirmDispatch, onAbort, initialSeconds = 5 }) {
   const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
   const [noteText, setNoteText] = useState("");
-  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
 
   useEffect(() => {
     if (secondsLeft <= 0) {
@@ -20,84 +20,82 @@ export default function CancelWindowModal({ onConfirmDispatch, onAbort, initialS
   }, [secondsLeft, noteText, onConfirmDispatch]);
 
   const handleSimulateVoice = () => {
-    setIsRecordingVoice(true);
+    setIsRecording(true);
     setTimeout(() => {
-      setNoteText("Someone is following me closely down the alley behind the main gate, need help!");
-      setIsRecordingVoice(false);
-    }, 1200);
+      setNoteText("Someone is following me, need help near the main road!");
+      setIsRecording(false);
+    }, 1000);
   };
 
   return (
-    <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex flex-col justify-between p-6 text-white select-none">
-      {/* Top Warning Banner */}
-      <div className="pt-8 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-xs font-bold border border-amber-500/30">
-          <AlertTriangle className="w-3.5 h-3.5" />
-          Pre-Dispatch Buffer Active
-        </div>
-        <h2 className="text-[22px] font-extrabold mt-2 text-white">
-          Dispatching Emergency in
-        </h2>
-      </div>
+    <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex flex-col justify-end p-4 select-none">
+      {/* Clean White Bottom Sheet Card matching screenshot aesthetic */}
+      <div className="w-full bg-white rounded-3xl p-6 shadow-2xl border border-slate-100 flex flex-col items-center text-center">
+        {/* Drag handle */}
+        <div className="w-12 h-1 bg-slate-200 rounded-full mb-3" />
 
-      {/* Center Countdown Ring */}
-      <div className="my-auto flex flex-col items-center justify-center">
-        <div className="relative w-40 h-40 flex items-center justify-center">
-          {/* Outer pulsed ring */}
-          <div className="absolute inset-0 rounded-full border-4 border-amber-400/30 animate-ping opacity-50" />
-          {/* Middle border */}
-          <div className="w-36 h-36 rounded-full border-4 border-amber-400 flex items-center justify-center bg-amber-500/10 shadow-[0_0_40px_rgba(245,158,11,0.3)]">
-            <span className="text-[64px] font-black text-amber-400 font-mono tracking-tight">
-              {secondsLeft}
-            </span>
-          </div>
+        {/* Status Pill */}
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-600 rounded-full text-xs font-semibold border border-amber-200 mb-2">
+          <AlertCircle className="w-3.5 h-3.5" />
+          <span>Starting alert in</span>
         </div>
 
-        <p className="text-xs text-slate-300 mt-4 text-center max-w-[260px]">
-          False alarm protection: Cancel before the timer ends to prevent notifying your circle.
+        {/* Large Countdown Circle */}
+        <div className="relative w-20 h-20 my-2 flex items-center justify-center">
+          <div className="absolute inset-0 rounded-full bg-amber-50 border-4 border-amber-400 animate-pulse" />
+          <span className="text-3xl font-black text-amber-600 font-mono z-10">
+            {secondsLeft}s
+          </span>
+        </div>
+
+        <h3 className="text-lg font-bold text-slate-900 mt-1">
+          Sending help request
+        </h3>
+        <p className="text-xs text-slate-500 mt-1 max-w-[260px] leading-relaxed">
+          If you pressed by mistake, tap Cancel below. No alerts will be sent to your family.
         </p>
 
-        {/* Quick Context & Voice Note Option */}
-        <div className="w-full max-w-[300px] mt-4 bg-white/10 rounded-xl p-3 border border-white/10">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-300 mb-2">
-            <span>Add Context / Note:</span>
+        {/* Quick voice or text note */}
+        <div className="w-full mt-4 bg-slate-50 rounded-2xl p-3 border border-slate-200/80">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-semibold text-slate-700">Add note (optional):</span>
             <button
               onClick={handleSimulateVoice}
-              className={`text-[11px] px-2 py-0.5 rounded flex items-center gap-1 transition-colors ${
-                isRecordingVoice ? 'bg-rose-500 text-white animate-pulse' : 'bg-white/20 hover:bg-white/30 text-white'
+              className={`text-[11px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 transition-all ${
+                isRecording ? 'bg-[#EA3B52] text-white animate-pulse' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
               }`}
             >
               <Mic className="w-3 h-3" />
-              {isRecordingVoice ? 'Listening (10s)...' : 'Simulate Voice Note'}
+              {isRecording ? 'Listening...' : 'Voice note'}
             </button>
           </div>
           <input
             type="text"
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
-            placeholder="e.g. Someone following me / medical injury"
-            className="w-full bg-black/30 border border-white/20 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:border-amber-400"
+            placeholder="e.g., Someone following me / accident"
+            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#EA3B52]"
           />
         </div>
-      </div>
 
-      {/* Action Buttons */}
-      <div className="pb-4 flex flex-col gap-3 max-w-[300px] w-full mx-auto">
-        <button
-          onClick={() => onConfirmDispatch(noteText)}
-          className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 text-white font-bold rounded-full text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95 transition-all"
-        >
-          <Send className="w-4 h-4" />
-          Send Immediately
-        </button>
+        {/* Action Buttons */}
+        <div className="w-full mt-4 flex flex-col gap-2.5">
+          <button
+            onClick={() => onConfirmDispatch(noteText)}
+            className="w-full py-3.5 bg-[#EA3B52] hover:bg-[#d92d44] text-white font-bold rounded-2xl text-sm flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.98]"
+          >
+            <Send className="w-4 h-4" />
+            Send Immediately
+          </button>
 
-        <button
-          onClick={onAbort}
-          className="w-full py-3 bg-white/15 hover:bg-white/25 text-white font-semibold rounded-full text-sm flex items-center justify-center gap-2 transition-colors active:scale-95 border border-white/20"
-        >
-          <X className="w-4 h-4" />
-          I Am Safe — Cancel Alert
-        </button>
+          <button
+            onClick={onAbort}
+            className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-2xl text-sm flex items-center justify-center gap-1.5 transition-colors active:scale-[0.98]"
+          >
+            <X className="w-4 h-4" />
+            I'm Safe — Cancel Alert
+          </button>
+        </div>
       </div>
     </div>
   );

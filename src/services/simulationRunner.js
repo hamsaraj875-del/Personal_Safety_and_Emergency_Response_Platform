@@ -1,3 +1,4 @@
+
 // Scripted Simulation Runner for Judges & Hackathon Benchmarks
 // Simulates 20 synthetic incidents to generate hard quantitative metrics
 
@@ -27,7 +28,7 @@ export async function runFullBenchmarkSimulation() {
     // Build a mock 4-event hash chain for each incident
     let prevHash = GENESIS_HASH;
     const chain = [];
-    
+
     // Block 0: Trigger
     const b0 = await createIncidentBlock({
       index: 0,

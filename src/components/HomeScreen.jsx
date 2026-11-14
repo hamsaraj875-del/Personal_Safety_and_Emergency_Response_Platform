@@ -1,27 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Home, FileText, Users, Sliders, Shield, AlertTriangle, Activity, ShieldAlert, ArrowRight, MapPin } from 'lucide-react';
-import { CURRENT_USER, QUICK_CATEGORIES } from '../constants/initialData';
+import { Home, FileText, Users, Sliders, MapPin } from 'lucide-react';
+import { CURRENT_USER } from '../constants/initialData';
 
 export default function HomeScreen({
   onTriggerSOS,
   onOpenAudit,
   onOpenResponders,
   onOpenSettings,
-  onStartSafeWalk,
-  selectedCategory,
-  onSelectCategory,
   activeTab = 'home'
 }) {
   const [isHolding, setIsHolding] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0); // 0 to 100
   const holdIntervalRef = useRef(null);
 
-  // Press-and-hold 2-second trigger logic (eliminates pocket dials as specified in Section 04 Interface A)
+  // 2-second hold-to-activate logic (prevents pocket dials as per UX blueprint)
   const startHold = () => {
     setIsHolding(true);
     setHoldProgress(0);
     const startTime = Date.now();
-    const duration = 1800; // 1.8s hold
+    const duration = 1800; // 1.8 seconds
 
     holdIntervalRef.current = setInterval(() => {
       const elapsed = Date.now() - startTime;
@@ -41,9 +38,8 @@ export default function HomeScreen({
     if (holdIntervalRef.current) {
       clearInterval(holdIntervalRef.current);
     }
-    // If released before 2s, still offer a click trigger to ensure accessibility under extreme panic
+    // If tapped or released quickly, still trigger the 5s cancel window for emergency access
     if (holdProgress > 15 && holdProgress < 100) {
-      // Trigger via tap
       onTriggerSOS && onTriggerSOS();
     }
     setIsHolding(false);
@@ -58,7 +54,7 @@ export default function HomeScreen({
 
   return (
     <div className="relative w-full h-full flex flex-col justify-between bg-white overflow-hidden select-none">
-      {/* Top Header matching screenshot */}
+      {/* Top Header Bar matching screenshot */}
       <div className="pt-8 px-6 pb-2">
         <div className="flex items-center justify-between">
           <div>
@@ -70,7 +66,7 @@ export default function HomeScreen({
             </h2>
           </div>
 
-          {/* User Avatar with Badge '2' */}
+          {/* User Avatar with Red Badge '2' */}
           <div className="relative">
             <img
               src={CURRENT_USER.avatar}
@@ -86,7 +82,7 @@ export default function HomeScreen({
 
       {/* Main Center Emergency Section matching screenshot */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 -mt-2">
-        {/* Title & Subtitle */}
+        {/* Title & Subtitle matching screenshot */}
         <h1 className="text-[24px] font-extrabold text-slate-900 text-center tracking-tight">
           Are you in emergency?
         </h1>
@@ -94,21 +90,21 @@ export default function HomeScreen({
           Press the button below help will reach you soon.
         </p>
 
-        {/* The Central Concentric Pulsing SOS Button */}
-        <div className="relative my-7 flex items-center justify-center">
-          {/* Layer 1: Outermost breathing halo */}
-          <div className="absolute w-[260px] h-[260px] rounded-full bg-rose-100/60 animate-soft-pulse pointer-events-none" />
+        {/* Central Concentric Pulsing SOS Button */}
+        <div className="relative my-8 flex items-center justify-center">
+          {/* Layer 1: Outermost breathing soft pink halo */}
+          <div className="absolute w-[260px] h-[260px] rounded-full bg-rose-100/50 animate-soft-pulse pointer-events-none" />
 
-          {/* Layer 2: Middle soft coral ring */}
+          {/* Layer 2: Middle coral gradient ring */}
           <div className="absolute w-[205px] h-[205px] rounded-full bg-[#EA3B52]/15 pointer-events-none" />
 
-          {/* Layer 3: Progress Ring SVG for 2-second hold */}
+          {/* Layer 3: Progress Ring SVG for 2s hold */}
           <svg className="absolute w-[184px] h-[184px] -rotate-90 pointer-events-none z-10">
             <circle
               cx="92"
               cy="92"
               r="86"
-              stroke="rgba(234, 59, 82, 0.2)"
+              stroke="rgba(234, 59, 82, 0.15)"
               strokeWidth="5"
               fill="none"
             />
@@ -149,25 +145,8 @@ export default function HomeScreen({
           </button>
         </div>
 
-        {/* Quick Context Category Chips */}
-        <div className="flex items-center justify-center gap-2 mb-3">
-          {QUICK_CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => onSelectCategory && onSelectCategory(cat.id)}
-              className={`px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all flex items-center gap-1.5 ${
-                selectedCategory === cat.id
-                  ? 'bg-[#EA3B52] text-white shadow-sm'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-              }`}
-            >
-              <span>{cat.label}</span>
-            </button>
-          ))}
-        </div>
-
         {/* Floating Address Card matching screenshot */}
-        <div className="w-full max-w-[325px] bg-white rounded-2xl p-3.5 shadow-card border border-slate-100/90 flex items-center gap-3 mt-1">
+        <div className="w-full max-w-[325px] bg-white rounded-2xl p-3.5 shadow-card border border-slate-100 flex items-center gap-3">
           <img
             src={CURRENT_USER.avatar}
             alt="Current location"
@@ -185,28 +164,12 @@ export default function HomeScreen({
             </p>
           </div>
         </div>
-
-        {/* Safe Walk Commute Strip (Preventive Mode) */}
-        <button
-          onClick={onStartSafeWalk}
-          className="w-full max-w-[325px] mt-2.5 px-3.5 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/70 rounded-xl flex items-center justify-between text-left transition-colors group"
-        >
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-rose-50 flex items-center justify-center text-[#EA3B52]">
-              <Shield className="w-3.5 h-3.5" />
-            </div>
-            <span className="text-[11px] font-semibold text-slate-700">
-              Start Timed Safe Walk (Night Commute)
-            </span>
-          </div>
-          <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-        </button>
       </div>
 
       {/* Floating Bottom Navigation Bar matching screenshot */}
       <div className="px-6 pb-6 pt-2">
-        <div className="w-full max-w-[325px] mx-auto bg-white rounded-full py-2 px-3 shadow-floating border border-slate-100/80 flex items-center justify-between">
-          {/* Tab 1: Home (Active red pill) */}
+        <div className="w-full max-w-[325px] mx-auto bg-white rounded-full py-2 px-3 shadow-floating border border-slate-100 flex items-center justify-between">
+          {/* Tab 1: Home (Active red pill container) */}
           <button
             onClick={() => {}}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-full font-bold text-[12px] transition-all ${
@@ -219,29 +182,32 @@ export default function HomeScreen({
             <span>Home</span>
           </button>
 
-          {/* Tab 2: Audit Timeline */}
+          {/* Tab 2: Activity Log */}
           <button
             onClick={onOpenAudit}
-            className="p-2 text-slate-400 hover:text-slate-700 transition-colors"
-            title="Tamper-Proof Audit Timeline"
+            className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-full transition-colors"
+            title="Activity & Safety Log"
+            aria-label="Activity Log"
           >
             <FileText className="w-5 h-5 stroke-[1.8]" />
           </button>
 
-          {/* Tab 3: Responders & Matching */}
+          {/* Tab 3: Contacts & Helpers */}
           <button
             onClick={onOpenResponders}
-            className="p-2 text-slate-400 hover:text-slate-700 transition-colors"
-            title="Responder Fleet & Matching"
+            className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-full transition-colors"
+            title="Trusted Contacts & Helpers"
+            aria-label="Contacts & Helpers"
           >
             <Users className="w-5 h-5 stroke-[1.8]" />
           </button>
 
-          {/* Tab 4: Admin & Simulation */}
+          {/* Tab 4: Safety Settings */}
           <button
             onClick={onOpenSettings}
-            className="p-2 text-slate-400 hover:text-slate-700 transition-colors"
-            title="Admin Command & Simulation"
+            className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-full transition-colors"
+            title="Safety Settings"
+            aria-label="Safety Settings"
           >
             <Sliders className="w-5 h-5 stroke-[1.8]" />
           </button>
