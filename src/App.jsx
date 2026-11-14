@@ -13,16 +13,17 @@ import CancelWindowModal from './components/CancelWindowModal';
 import SafetyPinModal from './components/SafetyPinModal';
 import InstructionModal from './components/InstructionModal';
 
-import { CURRENT_USER, VERIFIED_RESPONDERS, TRUSTED_CONTACTS, MAP_CONFIG } from './constants/initialData';
+import { VERIFIED_RESPONDERS, MAP_CONFIG } from './constants/initialData';
 import { createIncidentBlock, verifyChainIntegrity, GENESIS_HASH } from './services/cryptoLedger';
 import { rankResponders } from './services/responderMatcher';
 import { runAITriage } from './services/aiTriage';
+import { getActiveSession, saveUser, clearActiveSession } from './services/storage';
 
 export default function App() {
-  // Linear Flow: 'splash' -> 'intro' -> 'login' -> 'main'
+  // App Stage: 'splash' -> 'intro' -> 'login' -> 'main'
   const [appStage, setAppStage] = useState('splash');
 
-  // Full Screen Navigation in 'main': tabs ('home' | 'activity' | 'contacts' | 'profile')
+  // Full Screen Tabs: 'home' | 'activity' | 'contacts' | 'profile'
   const [activeTab, setActiveTab] = useState('home');
 
   // Emergency States: 'idle' | 'dispatched' | 'map'
@@ -33,8 +34,14 @@ export default function App() {
   const [showPinModal, setShowPinModal] = useState(false);
   const [showInstructionModal, setShowInstructionModal] = useState(false);
 
-  // User Profile
-  const [userProfile, setUserProfile] = useState(CURRENT_USER);
+  // Active User Profile & Custom Contacts (starts empty until entered or loaded from storage)
+  const [userProfile, setUserProfile] = useState({
+    name: "",
+    address: "",
+    phone: "",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80"
+  });
+  const [userContacts, setUserContacts] = useState([]);
 
   // Active Incident State
   const [incidentId, setIncidentId] = useState(null);
@@ -54,9 +61,10 @@ export default function App() {
   // Escalation timer reference
   const escalationTimerRef = useRef(null);
 
-  // Initialize Genesis Block on load
+  // Check saved session & initialize Genesis Block
   useEffect(() => {
-    async function initLedger() {
+    async function initLedgerAndSession() {
+      // 1. Genesis Block
       const genesis = await createIncidentBlock({
         index: 0,
         prevHash: GENESIS_HASH,
@@ -72,8 +80,15 @@ export default function App() {
       });
       setHashChain([genesis]);
       cleanBackupChainRef.current = [genesis];
+
+      // 2. Check existing saved user session
+      const saved = getActiveSession();
+      if (saved) {
+        setUserProfile(saved);
+        setUserContacts(saved.contacts || []);
+      }
     }
-    initLedger();
+    initLedgerAndSession();
   }, []);
 
   // Timer for elapsed incident duration
@@ -118,14 +133,48 @@ export default function App() {
 
   // Login handler
   const handleLoginSuccess = (formData) => {
-    setUserProfile(prev => ({
-      ...prev,
+    const updated = {
+      ...userProfile,
       name: formData.name,
       address: formData.address,
-      phone: formData.phone
-    }));
+      phone: formData.phone,
+      contacts: formData.contacts || userContacts
+    };
+    setUserProfile(updated);
+    setUserContacts(updated.contacts || []);
+    saveUser(updated);
+
     setAppStage('main');
     showToast(`Welcome, ${formData.name}! Your emergency network is active.`);
+  };
+
+  // Add Contact handler
+  const handleAddContact = (newContact) => {
+    const updatedList = [...userContacts, newContact];
+    setUserContacts(updatedList);
+    const updatedUser = { ...userProfile, contacts: updatedList };
+    setUserProfile(updatedUser);
+    saveUser(updatedUser);
+    showToast(`Added ${newContact.name} to your trusted emergency circle.`);
+  };
+
+  // Delete Contact handler
+  const handleDeleteContact = (id) => {
+    const updatedList = userContacts.filter(c => c.id !== id);
+    setUserContacts(updatedList);
+    const updatedUser = { ...userProfile, contacts: updatedList };
+    setUserProfile(updatedUser);
+    saveUser(updatedUser);
+    showToast("Contact removed.");
+  };
+
+  // Logout handler
+  const handleLogout = () => {
+    clearActiveSession();
+    setAppStage('login');
+    setActiveTab('home');
+    setEmergencyScreen('idle');
+    showToast("Logged out successfully.");
   };
 
   // Step 1: User triggers SOS -> 5s cancel window begins
@@ -139,7 +188,7 @@ export default function App() {
     await appendAuditBlock(
       "FALSE_ALARM",
       "citizen",
-      userProfile.id || CURRENT_USER.id,
+      userProfile.name || "citizen",
       { reason: "Cancelled in buffer window", address: userProfile.address }
     );
     showToast("Alert cancelled. No contacts alerted.");
@@ -151,7 +200,7 @@ export default function App() {
     const newIncId = `INC-${Date.now().toString().slice(-6)}`;
     setIncidentId(newIncId);
     setEscalationStep(1);
-    setEmergencyScreen('dispatched'); // Transition to Screen 2 in screenshot
+    setEmergencyScreen('dispatched');
 
     // AI triage & responder matching
     const triageResult = await runAITriage(noteText || "general distress");
@@ -167,7 +216,7 @@ export default function App() {
     await appendAuditBlock(
       "TRIGGERED",
       "citizen",
-      userProfile.id || CURRENT_USER.id,
+      userProfile.name || "citizen",
       {
         incidentId: newIncId,
         coords: MAP_CONFIG.userPos,
@@ -184,6 +233,9 @@ export default function App() {
   const startEscalationLadder = (incId) => {
     if (escalationTimerRef.current) clearInterval(escalationTimerRef.current);
 
+    const contact1Name = userContacts[0]?.name || "Primary Contact";
+    const contact2Name = userContacts[1]?.name || "Secondary Contact";
+
     // T+3s: Step 1 -> Contact 1 notified
     escalationTimerRef.current = setTimeout(async () => {
       setEscalationStep(2);
@@ -192,12 +244,12 @@ export default function App() {
         "system",
         "escalation_engine",
         {
-          contact: TRUSTED_CONTACTS[0].name,
+          contact: contact1Name,
           priority: 1,
           channel: "SMS_PUSH_CRITICAL"
         }
       );
-      showToast(`Step 1: Emergency alert sent to ${TRUSTED_CONTACTS[0].name}`);
+      showToast(`Step 1: Emergency alert sent to ${contact1Name}`);
 
       // T+7s: Step 2 -> Contact 2 notified
       escalationTimerRef.current = setTimeout(async () => {
@@ -207,12 +259,12 @@ export default function App() {
           "system",
           "escalation_engine",
           {
-            contact: TRUSTED_CONTACTS[1].name,
+            contact: contact2Name,
             priority: 2,
             channel: "VOICE_BRIDGE_SMS"
           }
         );
-        showToast(`Step 2: Backup alert sent to ${TRUSTED_CONTACTS[1].name}`);
+        showToast(`Step 2: Backup alert sent to ${contact2Name}`);
 
         // T+11s: Step 3 -> 1st Responder Dispatched (Emily Dayton)
         escalationTimerRef.current = setTimeout(async () => {
@@ -250,7 +302,7 @@ export default function App() {
     await appendAuditBlock(
       "RESOLVED_SAFE",
       "citizen",
-      userProfile.id || CURRENT_USER.id,
+      userProfile.name || "citizen",
       {
         incidentId,
         verificationMethod: "SAFETY_PIN_VERIFIED",
@@ -272,7 +324,7 @@ export default function App() {
     await appendAuditBlock(
       "DURESS_ESCALATION",
       "citizen",
-      userProfile.id || CURRENT_USER.id,
+      userProfile.name || "citizen",
       {
         incidentId,
         duressCodeUsed: true,
@@ -313,7 +365,7 @@ export default function App() {
     await appendAuditBlock(
       "112_ERSS_HANDOFF",
       "citizen",
-      userProfile.id || CURRENT_USER.id,
+      userProfile.name || "citizen",
       {
         incidentId,
         dialedNumber: "112",
@@ -381,7 +433,7 @@ export default function App() {
           <IntroBrief onComplete={() => setAppStage('login')} />
         )}
 
-        {/* Stage 3: Login Page */}
+        {/* Stage 3: Login Page (Clean, Empty Inputs, On-Screen OTP) */}
         {appStage === 'login' && (
           <LoginScreen onLoginSuccess={handleLoginSuccess} />
         )}
@@ -436,9 +488,12 @@ export default function App() {
                   />
                 )}
 
-                {/* Tab 3: Contacts & Helpers (Full Screen) */}
+                {/* Tab 3: Contacts & Helpers (Full Screen, Dynamic User Input) */}
                 {activeTab === 'contacts' && (
                   <ContactsScreen
+                    contacts={userContacts}
+                    onAddContact={handleAddContact}
+                    onDeleteContact={handleDeleteContact}
                     responders={responders}
                     selectedResponderId={activeResponder?.id}
                     onSelectResponder={(resp) => {
@@ -450,7 +505,7 @@ export default function App() {
                   />
                 )}
 
-                {/* Tab 4: Safety Profile & Settings (Full Screen) */}
+                {/* Tab 4: Minimalist Standard Settings (Full Screen) */}
                 {activeTab === 'profile' && (
                   <ProfileScreen
                     activeTab={activeTab}
@@ -459,6 +514,7 @@ export default function App() {
                       showToast("Night Safe Walk activated. Your commute is now being protected.");
                     }}
                     userProfile={userProfile}
+                    onLogout={handleLogout}
                   />
                 )}
               </>
