@@ -1,6 +1,11 @@
 package com.jaagruth.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -43,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -75,6 +81,17 @@ fun AmbulanceOnTheWayScreen(
     routePoints: List<LatLng>,
     escalationStep: Int = 4,
     elapsedSeconds: Int = 42,
+    callingContactName: String? = null,
+    callingContactPhone: String? = null,
+    callingContactPriority: Int = 1,
+    callCountdownSeconds: Int = 20,
+    isCallActive: Boolean = false,
+    isCallAcknowledged: Boolean = false,
+    acknowledgedContactName: String? = null,
+    onContactAnswered: () -> Unit = {},
+    onContactNoAnswer: () -> Unit = {},
+    show112HandoffBanner: Boolean = false,
+    onDial112: () -> Unit = {},
     onBack: () -> Unit,
     onSeeMap: () -> Unit,
     onCallResponder: (VerifiedResponder) -> Unit,
@@ -82,6 +99,17 @@ fun AmbulanceOnTheWayScreen(
     onLocateMe: () -> Unit
 ) {
     var selectedHub by remember { mutableStateOf<SafetyHub?>(null) }
+
+    val pulseTransition = rememberInfiniteTransition(label = "callPulse")
+    val callIconScale by pulseTransition.animateFloat(
+        initialValue = 0.9f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(500),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "callPulseScale"
+    )
 
     fun formatTime(sec: Int): String {
         val m = sec / 60
@@ -198,6 +226,204 @@ fun AmbulanceOnTheWayScreen(
                         lineHeight = 16.sp,
                         modifier = Modifier.padding(top = 2.dp)
                     )
+                }
+
+                // -------------------------------------------------------------
+                // Live Call Status Card & Escalation Actions (Sequential Calling)
+                // -------------------------------------------------------------
+                if (isCallActive) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        color = White,
+                        shadowElevation = 6.dp,
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, JagrathPrimaryRed)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .scale(callIconScale)
+                                            .clip(CircleShape)
+                                            .background(JagrathCrimson),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Call,
+                                            contentDescription = null,
+                                            tint = White,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = "Calling Priority #$callingContactPriority: ${callingContactName ?: "Contact"}...",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp,
+                                            color = Slate900
+                                        )
+                                        Text(
+                                            text = callingContactPhone ?: "",
+                                            fontSize = 11.sp,
+                                            color = Slate500
+                                        )
+                                    }
+                                }
+
+                                // 20-second countdown pill
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(Color(0xFFFEF2F2))
+                                        .border(1.dp, Color(0xFFFCA5A5), RoundedCornerShape(8.dp))
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "${callCountdownSeconds}s",
+                                        color = JagrathPrimaryRed,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            // 2 Interactive Action Buttons for Demo/Testing
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = onContactAnswered,
+                                    modifier = Modifier
+                                        .weight(1.3f)
+                                        .height(38.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF059669),
+                                        contentColor = White
+                                    )
+                                ) {
+                                    Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Contact Answered", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+
+                                Button(
+                                    onClick = onContactNoAnswer,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(38.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Slate100,
+                                        contentColor = Slate700
+                                    )
+                                ) {
+                                    Icon(imageVector = Icons.Default.Close, contentDescription = null, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("No Answer", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                        }
+                    }
+                } else if (isCallAcknowledged) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color(0xFFECFDF5),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Emerald500)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = Emerald500,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "ACKNOWLEDGED by ${acknowledgedContactName ?: "Priority Contact"}",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF065F46)
+                                )
+                                Text(
+                                    text = "Live GPS stream shared. Emergency network coordinating help.",
+                                    fontSize = 10.sp,
+                                    color = Color(0xFF047857)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (show112HandoffBanner) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color(0xFFFEF2F2),
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, JagrathPrimaryRed),
+                        shadowElevation = 4.dp
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "🚨 Personal contacts timed out",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = JagrathPrimaryRed
+                                )
+                                Text(
+                                    text = "${activeResponder.name} dispatched automatically.",
+                                    fontSize = 10.sp,
+                                    color = Slate600
+                                )
+                            }
+
+                            Button(
+                                onClick = onDial112,
+                                modifier = Modifier.height(36.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = JagrathPrimaryRed,
+                                    contentColor = White
+                                )
+                            ) {
+                                Icon(imageVector = Icons.Default.Call, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("112 ERSS Handoff", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                 }
 
                 // 24/7 Facility Alert Banner

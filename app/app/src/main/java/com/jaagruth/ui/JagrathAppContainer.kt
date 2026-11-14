@@ -1,5 +1,7 @@
 package com.jaagruth.ui
 
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -63,6 +65,7 @@ import com.jaagruth.ui.screens.HomeScreen
 import com.jaagruth.ui.screens.IntroBriefScreen
 import com.jaagruth.ui.screens.LoginScreen
 import com.jaagruth.ui.screens.MapTrackingScreen
+import com.jaagruth.ui.screens.PermissionGateScreen
 import com.jaagruth.ui.screens.ProfileScreen
 import com.jaagruth.ui.screens.SplashLandingScreen
 import kotlinx.coroutines.Job
@@ -72,6 +75,7 @@ import kotlinx.coroutines.launch
 enum class AppStage {
     SPLASH,
     INTRO,
+    PERMISSION,
     LOGIN,
     MAIN
 }
@@ -113,8 +117,16 @@ fun JagrathAppContainer() {
     var incidentId by remember { mutableStateOf<String?>(null) }
     var escalationStep by remember { mutableIntStateOf(0) }
     var elapsedSeconds by remember { mutableIntStateOf(0) }
-    var escalationJob by remember { mutableStateOf<Job?>(null) }
     var notificationBanner by remember { mutableStateOf<String?>(null) }
+
+    // Sequential Priority Auto-Calling State Machine
+    var currentCallIndex by remember { mutableIntStateOf(0) }
+    var callCountdownSeconds by remember { mutableIntStateOf(20) }
+    var isCallActive by remember { mutableStateOf(false) }
+    var isCallAcknowledged by remember { mutableStateOf(false) }
+    var acknowledgedContactName by remember { mutableStateOf<String?>(null) }
+    var show112HandoffBanner by remember { mutableStateOf(false) }
+    var callTimerJob by remember { mutableStateOf<Job?>(null) }
 
     // Cryptographic Hash Chain
     val hashChain = remember { mutableStateListOf<IncidentBlock>() }
@@ -180,65 +192,118 @@ fun JagrathAppContainer() {
         cleanBackupChain.addAll(hashChain)
     }
 
-    fun startEscalationLadder(newIncId: String) {
-        escalationJob?.cancel()
-        val c1Name = userContacts.getOrNull(0)?.name ?: "Primary Contact"
-        val c2Name = userContacts.getOrNull(1)?.name ?: "Secondary Contact"
+    fun triggerPhoneCallIntent(phone: String) {
+        try {
+            val cleanPhone = phone.replace(" ", "").replace("-", "")
+            val dialIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$cleanPhone"))
+            dialIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(dialIntent)
+        } catch (e: Exception) {
+            // Simulated dial fallback on devices without cellular dialer
+        }
+    }
 
-        escalationJob = scope.launch {
-            // T+3s: Step 1 -> Contact 1 notified
-            delay(3000)
-            escalationStep = 2
-            appendAuditBlock(
-                eventType = "LADDER_STEP_1",
-                actorRole = "system",
-                actorId = "escalation_engine",
-                payload = mapOf(
-                    "contact" to c1Name,
-                    "priority" to 1,
-                    "channel" to "SMS_PUSH_CRITICAL"
-                )
-            )
-            showToast("Step 1: Emergency alert sent to $c1Name")
-
-            // T+7s: Step 2 -> Contact 2 notified
-            delay(4000)
-            escalationStep = 3
-            appendAuditBlock(
-                eventType = "LADDER_STEP_2",
-                actorRole = "system",
-                actorId = "escalation_engine",
-                payload = mapOf(
-                    "contact" to c2Name,
-                    "priority" to 2,
-                    "channel" to "VOICE_BRIDGE_SMS"
-                )
-            )
-            showToast("Step 2: Backup alert sent to $c2Name")
-
-            // T+11s: Step 3 -> 1st Responder Assigned
-            delay(4000)
+    fun initiateCallForIndex(idx: Int) {
+        callTimerJob?.cancel()
+        if (idx >= userContacts.size) {
+            // All personal contacts exhausted -> Escalate to top verified responder & 112
+            isCallActive = false
+            show112HandoffBanner = true
             escalationStep = 4
             appendAuditBlock(
-                eventType = "RESPONDER_ASSIGNED",
-                actorRole = "matching_engine",
-                actorId = "dispatch_service",
+                eventType = "RESPONDER_DISPATCHED",
+                actorRole = "dispatch_engine",
+                actorId = "auto_escalator",
                 payload = mapOf(
-                    "responderId" to activeResponder.id,
-                    "name" to activeResponder.name,
-                    "score" to activeResponder.score,
-                    "eta" to "${activeResponder.etaMinutes} mins"
+                    "reason" to "All personal priority contacts timed out",
+                    "assignedResponder" to activeResponder.name,
+                    "responderPhone" to activeResponder.phone,
+                    "etaMinutes" to activeResponder.etaMinutes,
+                    "score" to activeResponder.score
                 )
             )
-            showToast("Step 3: ${activeResponder.name} (First Responder) is on the way!")
+            showToast("All personal priority contacts timed out. Top responder ${activeResponder.name} dispatched!")
+            return
         }
+
+        val targetContact = userContacts[idx]
+        currentCallIndex = idx
+        callCountdownSeconds = 20
+        isCallActive = true
+        isCallAcknowledged = false
+        show112HandoffBanner = false
+        escalationStep = (idx + 1).coerceAtMost(3)
+
+        appendAuditBlock(
+            eventType = "CALLING_PRIORITY_${idx + 1}",
+            actorRole = "system",
+            actorId = "escalation_engine",
+            payload = mapOf(
+                "contact" to targetContact.name,
+                "phone" to targetContact.phone,
+                "priority" to (idx + 1),
+                "channel" to "VOICE_CALL_AUTO_DIAL",
+                "windowSeconds" to 20
+            )
+        )
+
+        triggerPhoneCallIntent(targetContact.phone)
+        showToast("Auto-calling Priority #${idx + 1}: ${targetContact.name}...")
+
+        callTimerJob = scope.launch {
+            while (callCountdownSeconds > 0) {
+                delay(1000)
+                callCountdownSeconds -= 1
+            }
+            // Auto timeout when 20s window expires
+            handleContactNoAnswer()
+        }
+    }
+
+    fun handleContactAnswered() {
+        callTimerJob?.cancel()
+        isCallActive = false
+        isCallAcknowledged = true
+        val contact = userContacts.getOrNull(currentCallIndex)
+        acknowledgedContactName = contact?.name ?: "Primary Contact"
+
+        appendAuditBlock(
+            eventType = "ACKNOWLEDGED",
+            actorRole = "contact",
+            actorId = acknowledgedContactName ?: "Contact",
+            payload = mapOf(
+                "priority" to (currentCallIndex + 1),
+                "contactName" to (acknowledgedContactName ?: ""),
+                "status" to "EMERGENCY_COORDINATED",
+                "telematicsStream" to "LIVE_GPS_ACTIVE"
+            )
+        )
+        showToast("✅ $acknowledgedContactName answered and confirmed emergency coordination!")
+    }
+
+    fun handleContactNoAnswer() {
+        callTimerJob?.cancel()
+        val contact = userContacts.getOrNull(currentCallIndex)
+        val contactName = contact?.name ?: "Contact"
+
+        appendAuditBlock(
+            eventType = "PRIORITY_${currentCallIndex + 1}_NO_ANSWER",
+            actorRole = "system",
+            actorId = "escalation_engine",
+            payload = mapOf(
+                "contact" to contactName,
+                "priority" to (currentCallIndex + 1),
+                "reason" to "NO_ANSWER_TIMEOUT_20S"
+            )
+        )
+
+        initiateCallForIndex(currentCallIndex + 1)
     }
 
     fun handleConfirmDispatch(noteText: String) {
         showCancelWindow = false
         val newIncId = "INC-${System.currentTimeMillis().toString().takeLast(6)}"
         incidentId = newIncId
-        escalationStep = 1
         emergencyMode = EmergencyMode.DISPATCHED
 
         // Match responder
@@ -257,23 +322,44 @@ fun JagrathAppContainer() {
             )
         )
 
-        startEscalationLadder(newIncId)
+        appendAuditBlock(
+            eventType = "SOS_BUFFER_COMPLETED",
+            actorRole = "system",
+            actorId = "safeguard_timer",
+            payload = mapOf(
+                "bufferDuration" to "5.0s",
+                "status" to "LOCKED_DISPATCH"
+            )
+        )
+
+        // Begin strictly sequential priority auto-calling
+        initiateCallForIndex(0)
     }
 
     fun handleAbortCancelWindow() {
         showCancelWindow = false
+        callTimerJob?.cancel()
+        isCallActive = false
+        isCallAcknowledged = false
+        show112HandoffBanner = false
         appendAuditBlock(
             eventType = "FALSE_ALARM",
             actorRole = "citizen",
             actorId = userProfile.name,
-            payload = mapOf("reason" to "Cancelled in buffer window")
+            payload = mapOf(
+                "reason" to "Cancelled in buffer window",
+                "status" to "ABORTED_ZERO_CALLS_DISPATCHED"
+            )
         )
-        showToast("Alert cancelled. No contacts alerted.")
+        showToast("Alert cancelled. Zero calls or notifications dispatched.")
     }
 
     fun handleResolveNormal() {
         showPinModal = false
-        escalationJob?.cancel()
+        callTimerJob?.cancel()
+        isCallActive = false
+        isCallAcknowledged = false
+        show112HandoffBanner = false
         appendAuditBlock(
             eventType = "RESOLVED_SAFE",
             actorRole = "citizen",
@@ -288,7 +374,10 @@ fun JagrathAppContainer() {
 
     fun handleResolveDuress() {
         showPinModal = false
-        escalationJob?.cancel()
+        callTimerJob?.cancel()
+        isCallActive = false
+        isCallAcknowledged = false
+        show112HandoffBanner = false
         emergencyMode = EmergencyMode.IDLE
         activeTab = MainTab.HOME
         appendAuditBlock(
@@ -330,6 +419,7 @@ fun JagrathAppContainer() {
             actorId = userProfile.name,
             payload = mapOf("dialedNumber" to "112", "lat" to userCoords.lat, "lng" to userCoords.lng)
         )
+        triggerPhoneCallIntent("112")
         Toast.makeText(context, "Emergency Service (112): Connecting to official emergency dispatch...", Toast.LENGTH_LONG).show()
     }
 
@@ -340,7 +430,28 @@ fun JagrathAppContainer() {
                 SplashLandingScreen(onComplete = { appStage = AppStage.INTRO })
             }
             AppStage.INTRO -> {
-                IntroBriefScreen(onComplete = { appStage = AppStage.LOGIN })
+                IntroBriefScreen(onComplete = { appStage = AppStage.PERMISSION })
+            }
+            AppStage.PERMISSION -> {
+                PermissionGateScreen(
+                    initialContacts = userContacts,
+                    onPermissionsGranted = { updatedContacts ->
+                        userContacts.clear()
+                        userContacts.addAll(updatedContacts)
+                        appendAuditBlock(
+                            eventType = "PERMISSION_GRANTED",
+                            actorRole = "citizen",
+                            actorId = userProfile.name,
+                            payload = mapOf(
+                                "contactsCount" to updatedContacts.size,
+                                "priorityOrder" to updatedContacts.map { "P${it.priority}:${it.name}" },
+                                "telematicsAccess" to "LIVE_GPS_APPROVED"
+                            )
+                        )
+                        appStage = AppStage.LOGIN
+                        showToast("Emergency permissions granted. Priority circle secured.")
+                    }
+                )
             }
             AppStage.LOGIN -> {
                 LoginScreen(onLoginSuccess = { user ->
@@ -359,9 +470,21 @@ fun JagrathAppContainer() {
                             routePoints = routePoints,
                             escalationStep = escalationStep.coerceAtLeast(1),
                             elapsedSeconds = elapsedSeconds,
+                            callingContactName = userContacts.getOrNull(currentCallIndex)?.name,
+                            callingContactPhone = userContacts.getOrNull(currentCallIndex)?.phone,
+                            callingContactPriority = (currentCallIndex + 1),
+                            callCountdownSeconds = callCountdownSeconds,
+                            isCallActive = isCallActive,
+                            isCallAcknowledged = isCallAcknowledged,
+                            acknowledgedContactName = acknowledgedContactName,
+                            onContactAnswered = { handleContactAnswered() },
+                            onContactNoAnswer = { handleContactNoAnswer() },
+                            show112HandoffBanner = show112HandoffBanner,
+                            onDial112 = { handleDial112() },
                             onBack = { emergencyMode = EmergencyMode.IDLE },
                             onSeeMap = { emergencyMode = EmergencyMode.MAP },
                             onCallResponder = { resp ->
+                                triggerPhoneCallIntent(resp.phone)
                                 Toast.makeText(context, "Calling ${resp.name} (${resp.phone})...", Toast.LENGTH_SHORT).show()
                             },
                             onCancelRequest = { showPinModal = true },
@@ -414,11 +537,24 @@ fun JagrathAppContainer() {
                                             contacts = userContacts,
                                             onAddContact = { contact ->
                                                 userContacts.add(contact)
-                                                showToast("Added ${contact.name} to emergency circle.")
+                                                showToast("Added ${contact.name} as Priority ${userContacts.size}.")
                                             },
                                             onDeleteContact = { id ->
                                                 userContacts.removeAll { it.id == id }
+                                                for (i in userContacts.indices) {
+                                                    userContacts[i] = userContacts[i].copy(priority = i + 1)
+                                                }
                                                 showToast("Contact removed.")
+                                            },
+                                            onReorderContact = { fromIdx, toIdx ->
+                                                if (fromIdx in userContacts.indices && toIdx in userContacts.indices) {
+                                                    val item = userContacts.removeAt(fromIdx)
+                                                    userContacts.add(toIdx, item)
+                                                    for (i in userContacts.indices) {
+                                                        userContacts[i] = userContacts[i].copy(priority = i + 1)
+                                                    }
+                                                    showToast("Updated calling priority order.")
+                                                }
                                             },
                                             responders = responders,
                                             selectedResponderId = activeResponder.id,
