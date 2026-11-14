@@ -134,6 +134,7 @@ export function getNearbyResponders(userCoords) {
       badge: "Campus Marshal & Escort",
       etaMinutes: 7,
       distanceKm: 1.6,
+
       rating: 4.90,
       verified: true,
       phone: "+91 98234 56789",
