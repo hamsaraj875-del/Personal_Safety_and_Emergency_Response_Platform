@@ -145,6 +145,17 @@ export default function AuthorityLoginModal({ onAuthorizeLocation, onClose }) {
               Authorized surveillance, regional ambulance dispatch, and accident analytics portal.
             </p>
 
+            <button
+              type="button"
+              onClick={() => { setBadgeId('BLR-OPS-892'); setPassword('password123'); }}
+              className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-[11px] font-medium text-slate-600 transition-colors cursor-pointer"
+            >
+              <span className="text-slate-400">Demo →</span>
+              <span>Badge: <span className="font-bold text-slate-800">BLR-OPS-892</span></span>
+              <span className="text-slate-300">|</span>
+              <span>Password: <span className="font-bold text-slate-800">password123</span></span>
+            </button>
+
             {loginError && (
               <div className="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2 text-rose-700 text-xs">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
