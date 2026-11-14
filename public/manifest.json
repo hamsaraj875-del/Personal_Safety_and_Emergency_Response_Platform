@@ -1,0 +1,16 @@
+{
+  "short_name": "Jagrat",
+  "name": "Jagrat Unified Personal Safety & Emergency Response",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#EA3B52",
+  "theme_color": "#EA3B52",
+  "display": "standalone",
+  "orientation": "portrait"
+}

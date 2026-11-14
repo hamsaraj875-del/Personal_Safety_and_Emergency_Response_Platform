@@ -12,12 +12,14 @@ import MapTrackingView from './components/MapTrackingView';
 import CancelWindowModal from './components/CancelWindowModal';
 import SafetyPinModal from './components/SafetyPinModal';
 import InstructionModal from './components/InstructionModal';
+import LocationPermissionModal from './components/LocationPermissionModal';
 
 import { VERIFIED_RESPONDERS, MAP_CONFIG } from './constants/initialData';
 import { createIncidentBlock, verifyChainIntegrity, GENESIS_HASH } from './services/cryptoLedger';
 import { rankResponders } from './services/responderMatcher';
 import { runAITriage } from './services/aiTriage';
 import { getActiveSession, saveUser, clearActiveSession } from './services/storage';
+import { requestLocationPermission, getCurrentDeviceLocation, reverseGeocodeCoords } from './services/locationService';
 
 export default function App() {
   // App Stage: 'splash' -> 'intro' -> 'login' -> 'main'
@@ -33,6 +35,10 @@ export default function App() {
   const [showCancelWindow, setShowCancelWindow] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showInstructionModal, setShowInstructionModal] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+
+  // Fullscreen mobile view toggle
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Active User Profile & Custom Contacts (starts empty until entered or loaded from storage)
   const [userProfile, setUserProfile] = useState({
@@ -42,6 +48,40 @@ export default function App() {
     avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80"
   });
   const [userContacts, setUserContacts] = useState([]);
+
+  // Live GPS Coordinates
+  const [userCoords, setUserCoords] = useState({
+    lat: MAP_CONFIG.userPos[0],
+    lng: MAP_CONFIG.userPos[1]
+  });
+  const [isLocating, setIsLocating] = useState(false);
+
+  // Device GPS Location Permission & Sync Handler
+  const handleRefreshLocation = async () => {
+    setIsLocating(true);
+    try {
+      const perm = await requestLocationPermission();
+      if (!perm.granted) {
+        showToast(perm.error || "Location access was denied. Please allow GPS.");
+        setIsLocating(false);
+        return;
+      }
+      const coords = await getCurrentDeviceLocation();
+      const newPos = { lat: coords.lat, lng: coords.lng };
+      setUserCoords(newPos);
+      const addr = await reverseGeocodeCoords(coords.lat, coords.lng);
+      setUserProfile(prev => ({
+        ...prev,
+        address: addr
+      }));
+      showToast("Live GPS location synced successfully!");
+    } catch (err) {
+      console.error("GPS Sync failed:", err);
+      showToast("Could not fetch device GPS. Check location settings.");
+    } finally {
+      setIsLocating(false);
+    }
+  };
 
   // Active Incident State
   const [incidentId, setIncidentId] = useState(null);
@@ -142,6 +182,9 @@ export default function App() {
     };
     setUserProfile(updated);
     setUserContacts(updated.contacts || []);
+    if (formData.coords) {
+      setUserCoords(formData.coords);
+    }
     saveUser(updated);
 
     setAppStage('main');
@@ -177,9 +220,10 @@ export default function App() {
     showToast("Logged out successfully.");
   };
 
-  // Step 1: User triggers SOS -> 5s cancel window begins
+  // Step 1: User triggers SOS -> 5s cancel window begins & requests location permission
   const handleTriggerSOS = () => {
     setShowCancelWindow(true);
+    setShowLocationModal(true);
   };
 
   // Step 2: 5s cancel window aborted by user
@@ -202,24 +246,24 @@ export default function App() {
     setEscalationStep(1);
     setEmergencyScreen('dispatched');
 
-    // AI triage & responder matching
+    // AI triage & responder matching using real device GPS
     const triageResult = await runAITriage(noteText || "general distress");
     const ranked = rankResponders(
-      { lat: MAP_CONFIG.userPos[0], lng: MAP_CONFIG.userPos[1] },
+      { lat: userCoords.lat, lng: userCoords.lng },
       triageResult.category,
       VERIFIED_RESPONDERS
     );
     setResponders(ranked);
     setActiveResponder(ranked[0]);
 
-    // Record in ledger
+    // Record in ledger with verified GPS coordinates
     await appendAuditBlock(
       "TRIGGERED",
       "citizen",
       userProfile.name || "citizen",
       {
         incidentId: newIncId,
-        coords: MAP_CONFIG.userPos,
+        coords: [userCoords.lat, userCoords.lng],
         mode: "HOLD_SOS_2S",
         triage: triageResult
       }
@@ -376,42 +420,61 @@ export default function App() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-[#F1F5F9] flex flex-col items-center justify-center p-3 sm:p-6 font-sans antialiased select-none">
+    <div className={`w-full h-[100dvh] sm:min-h-screen ${isFullscreen ? 'bg-white p-0' : 'bg-slate-900/95 sm:bg-[#F1F5F9] p-0 sm:p-4'} flex flex-col items-center justify-center font-sans antialiased select-none overflow-hidden transition-colors`}>
       {/* Top Demo Helper Bar */}
-      <div className="w-full max-w-[390px] mb-3 flex items-center justify-between px-3.5 py-1.5 bg-white/90 backdrop-blur-md rounded-2xl shadow-sm border border-slate-200 text-xs">
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-[#EA3B52] animate-pulse" />
-          <span className="font-bold text-slate-800 text-[11px]">Jagrat Platform</span>
-        </div>
+      {!isFullscreen && (
+        <div className="w-full max-w-[390px] mb-2 sm:mb-3 flex items-center justify-between px-3.5 py-1.5 bg-white/95 backdrop-blur-md rounded-2xl shadow-sm border border-slate-200 text-xs">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#EA3B52] animate-pulse" />
+            <span className="font-bold text-slate-800 text-[11px]">Jagrat Mobile</span>
+          </div>
 
-        {/* Quick jump for testing */}
-        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl text-[10px] font-bold">
-          <button
-            onClick={() => { setAppStage('splash'); setEmergencyScreen('idle'); }}
-            className={`px-2 py-0.5 rounded-lg transition-all ${
-              appStage === 'splash' ? 'bg-[#EA3B52] text-white' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Splash
-          </button>
-          <button
-            onClick={() => { setAppStage('login'); setEmergencyScreen('idle'); }}
-            className={`px-2 py-0.5 rounded-lg transition-all ${
-              appStage === 'login' ? 'bg-[#EA3B52] text-white' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Login
-          </button>
-          <button
-            onClick={() => { setAppStage('main'); setEmergencyScreen('idle'); }}
-            className={`px-2 py-0.5 rounded-lg transition-all ${
-              appStage === 'main' && emergencyScreen === 'idle' ? 'bg-[#EA3B52] text-white' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            App
-          </button>
+          {/* Quick jump for testing */}
+          <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl text-[10px] font-bold">
+            <button
+              onClick={() => { setAppStage('splash'); setEmergencyScreen('idle'); }}
+              className={`px-2 py-0.5 rounded-lg transition-all ${
+                appStage === 'splash' ? 'bg-[#EA3B52] text-white' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Splash
+            </button>
+            <button
+              onClick={() => { setAppStage('login'); setEmergencyScreen('idle'); }}
+              className={`px-2 py-0.5 rounded-lg transition-all ${
+                appStage === 'login' ? 'bg-[#EA3B52] text-white' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Login
+            </button>
+            <button
+              onClick={() => { setAppStage('main'); setEmergencyScreen('idle'); }}
+              className={`px-2 py-0.5 rounded-lg transition-all ${
+                appStage === 'main' && emergencyScreen === 'idle' ? 'bg-[#EA3B52] text-white' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              App
+            </button>
+            <button
+              onClick={() => setIsFullscreen(true)}
+              className="px-2 py-0.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg transition-all"
+              title="Expand to Fullscreen Mobile View"
+            >
+              Full
+            </button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Floating Toggle when Fullscreen */}
+      {isFullscreen && (
+        <button
+          onClick={() => setIsFullscreen(false)}
+          className="fixed top-2 right-2 z-[9999] bg-black/60 hover:bg-black/80 text-white text-[11px] font-bold px-3 py-1 rounded-full backdrop-blur-md shadow-lg transition-all active:scale-95"
+        >
+          📱 Device Frame
+        </button>
+      )}
 
       {/* Realtime Toast Banner */}
       {notificationBanner && (
@@ -422,7 +485,10 @@ export default function App() {
       )}
 
       {/* Mobile Viewport Frame */}
-      <MobileFrame isDarkBar={appStage === 'splash' || appStage === 'intro' || emergencyScreen === 'dispatched'}>
+      <MobileFrame
+        isDarkBar={appStage === 'splash' || appStage === 'intro' || emergencyScreen === 'dispatched'}
+        isFullscreen={isFullscreen}
+      >
         {/* Stage 1: Letter-by-Letter Animated Splash Page */}
         {appStage === 'splash' && (
           <SplashLanding onComplete={() => setAppStage('intro')} />
@@ -441,7 +507,7 @@ export default function App() {
         {/* Stage 4: Main Application & Emergency Modes */}
         {appStage === 'main' && (
           <>
-            {/* If Emergency Dispatched (Left Screen in Screenshot) */}
+            {/* If Emergency Dispatched (Integrated Google Maps View) */}
             {emergencyScreen === 'dispatched' && (
               <AmbulanceOnTheWayScreen
                 onBack={() => setEmergencyScreen('idle')}
@@ -449,6 +515,11 @@ export default function App() {
                 onCancelRequest={() => setShowPinModal(true)}
                 escalationStep={escalationStep || 3}
                 elapsedSeconds={elapsedSeconds || 42}
+                userCoords={userCoords}
+                onUpdateUserCoords={setUserCoords}
+                activeResponder={activeResponder}
+                onCall={(resp) => alert(`Calling ${resp.name} (${resp.phone})...`)}
+                onRequestLocationPermission={() => setShowLocationModal(true)}
               />
             )}
 
@@ -458,6 +529,8 @@ export default function App() {
                 onBack={() => setEmergencyScreen('dispatched')}
                 onOpenInstruction={() => setShowInstructionModal(true)}
                 currentResponder={activeResponder}
+                userCoords={userCoords}
+                onUpdateUserCoords={setUserCoords}
                 onCall={(resp) => alert(`Calling ${resp.name} (${resp.phone})...`)}
                 onMessage={(resp) => alert(`Opening secure messaging with ${resp.name}...`)}
               />
@@ -473,6 +546,8 @@ export default function App() {
                     activeTab={activeTab}
                     onSelectTab={(t) => setActiveTab(t)}
                     userProfile={userProfile}
+                    onRefreshLocation={handleRefreshLocation}
+                    isLocating={isLocating}
                   />
                 )}
 
@@ -541,6 +616,18 @@ export default function App() {
               <InstructionModal
                 onClose={() => setShowInstructionModal(false)}
                 onDial112={handleDial112}
+              />
+            )}
+
+            {showLocationModal && (
+              <LocationPermissionModal
+                onLocationAcquired={(data) => {
+                  setUserCoords({ lat: data.lat, lng: data.lng });
+                  setUserProfile(prev => ({ ...prev, address: data.address }));
+                  setShowLocationModal(false);
+                  showToast("Live GPS acquired! Surrounding safety hubs mapped.");
+                }}
+                onClose={() => setShowLocationModal(false)}
               />
             )}
           </>

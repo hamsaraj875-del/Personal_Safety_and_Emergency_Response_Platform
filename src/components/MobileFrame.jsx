@@ -1,15 +1,33 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Wifi, BatteryMedium, Signal } from 'lucide-react';
 
-export default function MobileFrame({ children, isDarkBar = false }) {
+export default function MobileFrame({ children, isDarkBar = false, isFullscreen = false }) {
+  const [currentTime, setCurrentTime] = useState('9:41');
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const hours = now.getHours();
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      setCurrentTime(`${hours}:${minutes}`);
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <div className="relative w-full max-w-[390px] h-[780px] bg-white rounded-[44px] shadow-2xl border-[10px] border-slate-900 overflow-hidden flex flex-col justify-between mx-auto my-auto ring-1 ring-black/5 select-none">
-      {/* Top Mobile Status Bar matching screenshot */}
-      <div className={`absolute top-0 left-0 right-0 h-10 px-7 flex items-center justify-between z-40 text-xs font-semibold ${
+    <div className={`relative w-full h-[100dvh] bg-white overflow-hidden flex flex-col justify-between mx-auto my-auto select-none transition-all ${
+      isFullscreen
+        ? 'max-w-none rounded-none border-0 shadow-none'
+        : 'sm:h-[812px] sm:max-w-[390px] sm:rounded-[44px] sm:shadow-2xl sm:border-[10px] sm:border-slate-900 sm:ring-1 sm:ring-black/5'
+    }`}>
+      {/* Top Mobile Status Bar */}
+      <div className={`absolute top-0 left-0 right-0 h-10 px-6 sm:px-7 flex items-center justify-between z-40 text-xs font-semibold ${
         isDarkBar ? 'text-white' : 'text-slate-800'
       }`}>
         {/* Time */}
-        <span className="font-semibold text-[13px] tracking-tight">9:41</span>
+        <span className="font-semibold text-[13px] tracking-tight">{currentTime}</span>
 
         {/* Dynamic Island / Speaker Notch Indicator */}
         <div className="w-24 h-4 bg-slate-950 rounded-full mx-auto -mt-1 hidden sm:block opacity-90" />
@@ -28,12 +46,12 @@ export default function MobileFrame({ children, isDarkBar = false }) {
       </div>
 
       {/* Screen Body */}
-      <div className="relative w-full h-full flex flex-col overflow-hidden">
+      <div className="relative w-full h-full flex flex-col overflow-hidden pt-8 pb-4">
         {children}
       </div>
 
       {/* Bottom Home Indicator Bar */}
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-slate-400/50 rounded-full z-40 pointer-events-none" />
+      <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-32 h-1 bg-slate-400/50 rounded-full z-40 pointer-events-none" />
     </div>
   );
 }

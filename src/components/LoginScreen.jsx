@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { User, MapPin, Phone, ShieldCheck, ArrowRight, Navigation, Sparkles, RefreshCw, KeyRound, Check } from 'lucide-react';
+import { User, MapPin, Phone, ShieldCheck, ArrowRight, Navigation, Sparkles, RefreshCw, KeyRound, Check, CheckCircle2 } from 'lucide-react';
 import { getUserByPhone, saveUser } from '../services/storage';
+import { requestLocationPermission, getCurrentDeviceLocation, reverseGeocodeCoords } from '../services/locationService';
 
 export default function LoginScreen({ onLoginSuccess }) {
   const [name, setName] = useState("");
@@ -10,6 +11,8 @@ export default function LoginScreen({ onLoginSuccess }) {
   const [generatedOtp, setGeneratedOtp] = useState(null);
   const [otpSent, setOtpSent] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [locationSent, setLocationSent] = useState(false);
+  const [userCoords, setUserCoords] = useState(null);
   const [existingUserFound, setExistingUserFound] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -65,28 +68,47 @@ export default function LoginScreen({ onLoginSuccess }) {
     }
   };
 
-  const handleUseLiveLocation = () => {
+  const handleUseLiveLocation = async () => {
     setIsLocating(true);
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setAddress(`Near ${pos.coords.latitude.toFixed(4)}°N, ${pos.coords.longitude.toFixed(4)}°E (Bengaluru, KA)`);
-          setIsLocating(false);
-        },
-        () => {
-          // Fallback location for demo
-          setTimeout(() => {
+    try {
+      // 1. Ask permission to turn on / access location on user device
+      const perm = await requestLocationPermission();
+      if (!perm.granted) {
+        alert(perm.error || "Location access permission was denied. Please allow location in your device settings.");
+        setIsLocating(false);
+        return;
+      }
+
+      // 2. Fetch actual local device coordinates
+      const coords = await getCurrentDeviceLocation();
+      setUserCoords({ lat: coords.lat, lng: coords.lng });
+
+      // 3. Reverse geocode to real local address
+      const formattedAddress = await reverseGeocodeCoords(coords.lat, coords.lng);
+      setAddress(formattedAddress);
+      setLocationSent(true);
+    } catch (err) {
+      console.warn("Location error, attempting fallback:", err);
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            setAddress(`Near ${pos.coords.latitude.toFixed(4)}°N, ${pos.coords.longitude.toFixed(4)}°E (Bengaluru, KA)`);
+            setLocationSent(true);
+            setIsLocating(false);
+          },
+          () => {
             setAddress("BMSCE Campus, Bull Temple Rd, Basavanagudi, Bengaluru");
             setIsLocating(false);
-          }, 500);
-        },
-        { timeout: 3000 }
-      );
-    } else {
-      setTimeout(() => {
+          },
+          { timeout: 4000 }
+        );
+      } else {
         setAddress("BMSCE Campus, Bull Temple Rd, Basavanagudi, Bengaluru");
         setIsLocating(false);
-      }, 500);
+      }
+    } finally {
+      setIsLocating(false);
     }
   };
 
@@ -123,7 +145,8 @@ export default function LoginScreen({ onLoginSuccess }) {
       name: name.trim(),
       address: address.trim(),
       phone: `+91 ${cleanPhone}`,
-      contacts: getUserByPhone(cleanPhone)?.contacts || []
+      contacts: getUserByPhone(cleanPhone)?.contacts || [],
+      coords: userCoords
     };
 
     saveUser(userData);
@@ -185,7 +208,7 @@ export default function LoginScreen({ onLoginSuccess }) {
               className="text-[11px] font-bold text-[#EA3B52] hover:text-[#d92d44] flex items-center gap-1 transition-colors"
             >
               <Navigation className={`w-3 h-3 ${isLocating ? 'animate-spin' : ''}`} />
-              <span>{isLocating ? 'Detecting...' : 'Use Current GPS'}</span>
+              <span>{isLocating ? 'Detecting...' : (locationSent ? 'Live GPS Linked ✓' : 'Use Current GPS')}</span>
             </button>
           </div>
           <div className="relative flex items-center">
@@ -213,7 +236,7 @@ export default function LoginScreen({ onLoginSuccess }) {
               className="text-[11px] font-bold text-[#EA3B52] hover:text-[#d92d44] flex items-center gap-1 transition-colors"
             >
               <KeyRound className="w-3 h-3" />
-              <span>{otpSent ? 'Resend OTP' : 'Send OTP'}</span>
+              <span>{otpSent ? 'Regenerate OTP' : 'Send OTP'}</span>
             </button>
           </div>
           <div className="flex gap-2">
@@ -224,38 +247,48 @@ export default function LoginScreen({ onLoginSuccess }) {
               <Phone className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
               <input
                 type="tel"
-                required
                 maxLength={10}
+                required
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
                 placeholder="10-digit mobile number"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#EA3B52] transition-colors font-medium"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#EA3B52] transition-colors"
               />
             </div>
           </div>
         </div>
 
-        {/* Generated OTP Simulated Alert Banner */}
+        {/* On-Screen Generated OTP Card */}
         {generatedOtp && (
-          <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-center justify-between text-xs animate-fadeIn">
-            <div>
-              <span className="text-[10px] text-slate-500 uppercase font-semibold block">Demo OTP SMS Received:</span>
-              <span className="font-mono text-base font-black text-[#EA3B52] tracking-widest">{generatedOtp}</span>
+          <div className="p-3 bg-rose-50/70 border border-rose-200 rounded-2xl animate-scaleIn">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-rose-800 text-[11px] font-bold">
+                <Sparkles className="w-3.5 h-3.5 text-[#EA3B52]" />
+                <span>Verification OTP (Simulated SMS):</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleAutoFillOtp}
+                className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#EA3B52] text-white hover:bg-[#d92d44] transition-all"
+              >
+                Auto-fill
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={handleAutoFillOtp}
-              className="px-2.5 py-1 bg-[#EA3B52] text-white rounded-lg text-[11px] font-bold shadow-2xs hover:bg-[#d92d44] transition-all"
-            >
-              Auto-fill Code
-            </button>
+            <div className="mt-1 flex items-center justify-between">
+              <span className="font-mono text-base font-black tracking-widest text-[#EA3B52]">
+                {generatedOtp}
+              </span>
+              <span className="text-[10px] text-slate-500">
+                Tap auto-fill or enter below
+              </span>
+            </div>
           </div>
         )}
 
-        {/* 6-Digit OTP Input */}
+        {/* 6-Digit OTP Input Boxes */}
         <div>
           <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-            Enter 6-Digit OTP
+            Enter 6-Digit Code
           </label>
           <div className="grid grid-cols-6 gap-1.5">
             {otp.map((digit, idx) => (
@@ -266,14 +299,18 @@ export default function LoginScreen({ onLoginSuccess }) {
                 maxLength={1}
                 value={digit}
                 onChange={(e) => handleOtpChange(idx, e.target.value)}
-                className="w-full h-11 bg-slate-50 border border-slate-200 rounded-xl text-center text-sm font-bold text-slate-900 focus:outline-none focus:border-[#EA3B52] transition-all"
+                placeholder="•"
+                className="w-full h-10 bg-slate-50 border border-slate-200 rounded-xl text-center text-sm font-bold text-slate-900 focus:outline-none focus:border-[#EA3B52] transition-all"
               />
             ))}
           </div>
         </div>
 
+        {/* Error message */}
         {errorMessage && (
-          <p className="text-xs text-rose-500 font-semibold">{errorMessage}</p>
+          <p className="text-xs text-rose-500 font-semibold text-center mt-1">
+            {errorMessage}
+          </p>
         )}
 
         {/* Submit Button */}
@@ -285,57 +322,6 @@ export default function LoginScreen({ onLoginSuccess }) {
           <ArrowRight className="w-4 h-4" />
         </button>
       </form>
-
-      {/* Social Logins */}
-      <div className="pt-1">
-        <div className="relative flex items-center justify-center my-2.5">
-          <div className="border-t border-slate-200 w-full" />
-          <span className="bg-white px-3 text-[10px] text-slate-400 uppercase font-semibold">
-            Or continue with
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          {/* Google Button */}
-          <button
-            type="button"
-            onClick={() => {
-              setName("Priyatev");
-              setAddress("BMSCE Campus, Bull Temple Rd, Bengaluru");
-              setPhone("9845012345");
-              setGeneratedOtp("924158");
-              setOtp(["9", "2", "4", "1", "5", "8"]);
-            }}
-            className="py-2.5 px-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-center gap-2 text-xs font-bold text-slate-700 transition-colors"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-            </svg>
-            <span>Google</span>
-          </button>
-
-          {/* Facebook Button */}
-          <button
-            type="button"
-            onClick={() => {
-              setName("Priyatev");
-              setAddress("BMSCE Campus, Bull Temple Rd, Bengaluru");
-              setPhone("9845012345");
-              setGeneratedOtp("924158");
-              setOtp(["9", "2", "4", "1", "5", "8"]);
-            }}
-            className="py-2.5 px-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-center gap-2 text-xs font-bold text-slate-700 transition-colors"
-          >
-            <svg className="w-4 h-4 text-[#1877F2] fill-current" viewBox="0 0 24 24">
-              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-            </svg>
-            <span>Facebook</span>
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

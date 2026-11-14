@@ -112,3 +112,64 @@ export const QUICK_CATEGORIES = [
   { id: "harassment", label: "Harassment / Unsafe", color: "amber", icon: "ShieldAlert" },
   { id: "accident", label: "Accident", color: "rose", icon: "AlertTriangle" }
 ];
+
+// Dynamically generate surrounding emergency hubs around the user's live coordinates
+export function getSurroundingSafetyHubs(coords) {
+  const lat = coords?.lat || MAP_CONFIG.userPos[0];
+  const lng = coords?.lng || MAP_CONFIG.userPos[1];
+
+  return [
+    {
+      id: "hub_hospital_01",
+      name: "Emergency Trauma & Hospital Care",
+      type: "hospital",
+      icon: "🏥",
+      category: "Medical Facility",
+      distanceMeters: 420,
+      etaMins: 2,
+      location: { lat: lat + 0.0022, lng: lng + 0.0018 },
+      address: "24/7 Casualty & Critical Trauma Unit",
+      phone: "+91 80 2662 1000",
+      status: "Open 24/7 · 3 Ambulances Ready"
+    },
+    {
+      id: "hub_police_02",
+      name: "City Police Rapid Action Post",
+      type: "police",
+      icon: "🚓",
+      category: "Law Enforcement",
+      distanceMeters: 580,
+      etaMins: 3,
+      location: { lat: lat - 0.0021, lng: lng + 0.0024 },
+      address: "Sub-division Patrol Outpost",
+      phone: "112",
+      status: "Patrol Active · 2 PCR Vans Deployed"
+    },
+    {
+      id: "hub_safezone_03",
+      name: "Community Monitored Safe Zone",
+      type: "safe_zone",
+      icon: "🛡️",
+      category: "Guarded Safe Haven",
+      distanceMeters: 290,
+      etaMins: 1,
+      location: { lat: lat + 0.0014, lng: lng - 0.0022 },
+      address: "Main Security Control & CCTV Point",
+      phone: "+91 80 2662 2130",
+      status: "Staffed 24x7 · SOS Beacon Active"
+    },
+    {
+      id: "hub_fire_04",
+      name: "Emergency Rescue & Fire Station",
+      type: "fire_rescue",
+      icon: "🚒",
+      category: "Fire & Rescue",
+      distanceMeters: 750,
+      etaMins: 4,
+      location: { lat: lat - 0.0028, lng: lng - 0.0019 },
+      address: "Municipal Fire Control Base",
+      phone: "101",
+      status: "On-Duty Standby"
+    }
+  ];
+}

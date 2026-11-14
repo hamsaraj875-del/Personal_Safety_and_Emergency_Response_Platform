@@ -6,7 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cap:sync": "vite build && npx cap sync",
+    "cap:add:android": "npx cap add android",
+    "cap:add:ios": "npx cap add ios",
+    "cap:android": "vite build && npx cap open android",
+    "cap:ios": "vite build && npx cap open ios"
   },
   "repository": {
     "type": "git",
@@ -21,6 +26,15 @@
   },
   "homepage": "https://github.com/hamsaraj875-del/Personal_Safety_and_Emergency_Response_Platform#readme",
   "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/cli": "^8.6.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/geolocation": "^8.2.4",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.6.2",
+    "@capacitor/status-bar": "^8.0.4",
+    "@vis.gl/react-google-maps": "^1.10.2",
     "lucide-react": "^1.73.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"

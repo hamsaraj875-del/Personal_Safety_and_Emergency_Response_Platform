@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MapPin } from 'lucide-react';
+import { MapPin, Navigation } from 'lucide-react';
 import { CURRENT_USER } from '../constants/initialData';
 import BottomNavBar from './BottomNavBar';
 
@@ -7,7 +7,9 @@ export default function HomeScreen({
   onTriggerSOS,
   activeTab,
   onSelectTab,
-  userProfile
+  userProfile,
+  onRefreshLocation,
+  isLocating = false
 }) {
   const [isHolding, setIsHolding] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0); // 0 to 100
@@ -148,18 +150,28 @@ export default function HomeScreen({
         </div>
 
         {/* Floating Address Card matching screenshot */}
-        <div className="w-full max-w-[325px] bg-white rounded-2xl p-3.5 shadow-card border border-slate-100 flex items-center gap-3">
+        <div
+          onClick={onRefreshLocation}
+          className="w-full max-w-[325px] bg-white rounded-2xl p-3.5 shadow-card border border-slate-100 flex items-center gap-3 cursor-pointer hover:border-rose-200 transition-all active:scale-[0.99]"
+          title="Tap to update live GPS location"
+        >
           <img
             src={activeUser.avatar || CURRENT_USER.avatar}
             alt="Current location"
             className="w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0"
           />
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1">
-              <MapPin className="w-3 h-3 text-[#EA3B52]" />
-              <h4 className="text-[12px] font-bold text-slate-800">
-                Your current address
-              </h4>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <MapPin className="w-3 h-3 text-[#EA3B52]" />
+                <h4 className="text-[12px] font-bold text-slate-800">
+                  Your current address
+                </h4>
+              </div>
+              <span className="text-[10px] font-bold text-[#EA3B52] flex items-center gap-0.5">
+                <Navigation className={`w-2.5 h-2.5 ${isLocating ? 'animate-spin' : ''}`} />
+                {isLocating ? 'Locating...' : 'GPS Sync'}
+              </span>
             </div>
             <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
               {activeUser.address}
