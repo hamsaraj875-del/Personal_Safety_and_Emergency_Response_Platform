@@ -74,14 +74,14 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords 
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-black tracking-tight text-slate-900">
+              <h1 className="text-base font-medium tracking-tight text-slate-900">
                 Jagrath Authority Command
               </h1>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-[#EA3B52] border border-rose-100">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-[#DE354C] border border-rose-100">
                 50,000+ DATASET
               </span>
             </div>
-            <p className="text-xs text-slate-500 font-medium">
+            <p className="text-xs text-slate-500 font-normal">
               {sectorData.sectorName}
             </p>
           </div>

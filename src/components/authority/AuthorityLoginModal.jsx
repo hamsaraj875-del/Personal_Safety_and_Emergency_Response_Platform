@@ -78,16 +78,16 @@ export default function AuthorityLoginModal({ onAuthorizeLocation, onClose }) {
               <img src="/logo.png" alt="Jagrath Logo" className="w-full h-full object-cover" />
             </div>
 
-            <h2 className="text-2xl font-black tracking-tight text-slate-900">
+            <h2 className="text-[24px] font-normal tracking-tight text-slate-900">
               Authority Command Desk
             </h2>
-            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+            <p className="text-[14px] text-slate-500 font-normal mt-1 leading-relaxed">
               Authorized surveillance, regional ambulance dispatch, and accident analytics portal.
             </p>
 
             <form onSubmit={handleBadgeSubmit} className="mt-5 space-y-4">
               <div>
-                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">
+                <label className="text-[12px] font-medium text-slate-700 uppercase tracking-wider block mb-1">
                   Officer Badge / Agency ID
                 </label>
                 <div className="relative flex items-center">

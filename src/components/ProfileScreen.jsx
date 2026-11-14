@@ -29,10 +29,10 @@ export default function ProfileScreen({
     <div className="relative w-full h-full flex flex-col justify-between bg-slate-50 text-slate-900 select-none overflow-hidden">
       {/* Clean Standard Header */}
       <div className="pt-8 px-6 pb-3 bg-white border-b border-slate-100">
-        <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+        <h2 className="text-[22px] font-normal text-slate-900 tracking-tight">
           Settings
         </h2>
-        <p className="text-xs text-slate-400">
+        <p className="text-[13px] text-slate-500 font-normal">
           Account, security PINs & emergency preferences
         </p>
       </div>
@@ -49,13 +49,13 @@ export default function ProfileScreen({
             />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-base font-bold text-slate-900 truncate leading-tight">
+            <h3 className="text-[16px] font-medium text-slate-900 truncate leading-tight">
               {activeUser.name || "User"}
             </h3>
-            <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
+            <p className="text-[13px] text-slate-500 font-normal truncate mt-0.5">
               {activeUser.phone || "No phone linked"}
             </p>
-            <div className="inline-flex items-center gap-1.5 mt-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[11px] font-semibold border border-emerald-100">
+            <div className="inline-flex items-center gap-1.5 mt-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[11px] font-medium border border-emerald-100">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span>Safety Protection Active</span>
             </div>
@@ -64,7 +64,7 @@ export default function ProfileScreen({
 
         {/* Section 1: Security PINs */}
         <div>
-          <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1 mb-1.5">
+          <h4 className="text-[12px] font-medium uppercase tracking-wider text-slate-400 px-1 mb-1.5">
             Security PIN Codes
           </h4>
           <div className="bg-white rounded-2xl border border-slate-200/80 divide-y divide-slate-100 shadow-sm">
@@ -75,11 +75,11 @@ export default function ProfileScreen({
                   <Key className="w-4 h-4" />
                 </div>
                 <div>
-                  <h5 className="text-xs font-bold text-slate-800">Normal Safe PIN</h5>
-                  <p className="text-[11px] text-slate-400">Verifies you are safe and ends alert</p>
+                  <h5 className="text-[13px] font-medium text-slate-800">Normal Safe PIN</h5>
+                  <p className="text-[11px] text-slate-400 font-normal">Verifies you are safe and ends alert</p>
                 </div>
               </div>
-              <span className="font-mono font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg text-xs border border-emerald-100">
+              <span className="font-mono font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg text-xs border border-emerald-100">
                 1234
               </span>
             </div>
@@ -91,11 +91,11 @@ export default function ProfileScreen({
                   <Shield className="w-4 h-4" />
                 </div>
                 <div>
-                  <h5 className="text-xs font-bold text-slate-800">Silent Duress PIN</h5>
-                  <p className="text-[11px] text-slate-400">If coerced by attacker; secretly alerts police</p>
+                  <h5 className="text-[13px] font-medium text-slate-800">Silent Duress PIN</h5>
+                  <p className="text-[11px] text-slate-400 font-normal">If coerced by attacker; secretly alerts police</p>
                 </div>
               </div>
-              <span className="font-mono font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg text-xs border border-amber-100">
+              <span className="font-mono font-medium text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg text-xs border border-amber-100">
                 9999
               </span>
             </div>

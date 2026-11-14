@@ -135,17 +135,17 @@ export default function MapTrackingView({
           </span>
         </div>
 
-        <h1 className="text-[18px] sm:text-[20px] font-extrabold text-slate-900 leading-tight">
+        <h1 className="text-[20px] font-normal text-slate-900 tracking-tight leading-tight">
           Ambulance and responders on the way
         </h1>
 
-        <p className="text-[12px] text-slate-500 mt-0.5 leading-snug">
+        <p className="text-[13px] text-slate-500 font-normal mt-1 leading-snug">
           Approaching from your local sector. Real facilities in 20km radius mapped below.
         </p>
 
         <button
           onClick={onOpenInstruction}
-          className="text-[12px] font-bold text-[#EA3B52] hover:text-[#BE123C] mt-0.5 inline-block transition-colors underline-offset-2 hover:underline"
+          className="text-[13px] font-medium text-[#DE354C] hover:text-[#BE123C] mt-1 inline-block transition-colors underline-offset-2 hover:underline"
         >
           Open full emergency instruction →
         </button>

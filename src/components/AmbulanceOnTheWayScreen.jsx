@@ -170,10 +170,10 @@ export default function AmbulanceOnTheWayScreen({
 
       {/* Main Title Banner */}
       <div className="px-4 pb-1 z-10 flex-shrink-0 text-left">
-        <h1 className="text-[18px] sm:text-[20px] font-extrabold tracking-tight leading-tight text-white drop-shadow-sm">
+        <h1 className="text-[20px] font-medium tracking-tight leading-tight text-white drop-shadow-sm">
           Ambulance & responders on the way
         </h1>
-        <p className="text-[11px] text-white/90 leading-snug mt-0.5">
+        <p className="text-[13px] text-white/90 font-normal leading-snug mt-0.5">
           Approaching from your local sector (~{responder.distanceKm || 0.9} km). Real surrounding emergency facilities mapped below.
         </p>
       </div>

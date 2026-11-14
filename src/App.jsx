@@ -478,7 +478,7 @@ export default function App() {
           )}
 
           {/* Mobile Viewport Frame */}
-          <MobileFrame isDarkBar={appStage === 'splash' || appStage === 'intro' || emergencyScreen === 'dispatched'}>
+          <MobileFrame isDarkBar={appStage === 'splash' || emergencyScreen === 'dispatched'}>
             {/* Stage 1: Letter-by-Letter Animated Splash Page */}
             {appStage === 'splash' && (
               <SplashLanding onComplete={() => setAppStage('intro')} />

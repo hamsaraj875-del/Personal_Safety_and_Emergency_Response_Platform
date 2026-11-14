@@ -47,7 +47,7 @@ export default function SplashLanding({ onComplete }) {
 
         {/* Letter-by-Letter Animated Text */}
         <div className="h-16 flex items-center justify-center">
-          <h1 className="text-4xl sm:text-5xl font-black tracking-[0.25em] text-white drop-shadow-lg flex items-center">
+          <h1 className="text-[36px] sm:text-[42px] font-medium tracking-[0.2em] text-white drop-shadow-lg flex items-center">
             {displayedLetters.split("").map((char, idx) => (
               <span
                 key={idx}
@@ -61,13 +61,13 @@ export default function SplashLanding({ onComplete }) {
             ))}
             {/* Blinking cursor while typing */}
             {!isFinished && (
-              <span className="w-1 h-8 bg-white/80 ml-1 animate-pulse" />
+              <span className="w-1 h-7 bg-white/80 ml-1 animate-pulse" />
             )}
           </h1>
         </div>
 
         {/* Subtitle tag */}
-        <p className={`text-xs font-semibold uppercase tracking-[0.3em] text-white/80 mt-3 transition-opacity duration-500 ${
+        <p className={`text-[13px] font-normal uppercase tracking-[0.25em] text-white/80 mt-3 transition-opacity duration-500 ${
           isFinished ? 'opacity-100' : 'opacity-0'
         }`}>
           Vigilant Protection

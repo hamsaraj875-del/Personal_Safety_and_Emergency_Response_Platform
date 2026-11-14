@@ -63,10 +63,10 @@ export default function ContactsScreen({
             <Users className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-900">
+            <h2 className="text-[20px] font-normal text-slate-900 tracking-tight">
               Trusted Contacts
             </h2>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[13px] text-slate-500 font-normal">
               Who receives your SOS alerts and coordinates help
             </p>
           </div>
@@ -74,7 +74,7 @@ export default function ContactsScreen({
 
         <button
           onClick={() => setShowAddModal(true)}
-          className="px-3 py-1.5 bg-[#EA3B52] hover:bg-[#d92d44] text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs active:scale-95 transition-all"
+          className="px-3.5 py-1.5 bg-[#DE354C] hover:bg-[#cf2f44] text-white rounded-full text-[13px] font-medium flex items-center gap-1 shadow-2xs active:scale-95 transition-all cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
           <span>Add</span>

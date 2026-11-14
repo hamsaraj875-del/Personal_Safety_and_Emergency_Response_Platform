@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, MapPin, Phone, ShieldCheck, ArrowRight, Navigation, Sparkles, RefreshCw, KeyRound, Check, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Check } from 'lucide-react';
 import { getUserByPhone, saveUser } from '../services/storage';
 import { requestLocationPermission, getCurrentDeviceLocation, reverseGeocodeCoords } from '../services/locationService';
 
@@ -37,18 +37,16 @@ export default function LoginScreen({ onLoginSuccess }) {
   const handleGenerateOtp = () => {
     const clean = phone.replace(/\D/g, '');
     if (clean.length !== 10) {
-      setErrorMessage("Please enter a valid 10-digit mobile number first.");
+      setErrorMessage("Please enter a valid 10-digit mobile number.");
       return;
     }
     setErrorMessage("");
 
-    // Generate random 6-digit number
     const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
     setGeneratedOtp(randomCode);
     setOtpSent(true);
   };
 
-  // Auto fill generated OTP
   const handleAutoFillOtp = () => {
     if (generatedOtp) {
       setOtp(generatedOtp.split(""));
@@ -61,7 +59,6 @@ export default function LoginScreen({ onLoginSuccess }) {
     updated[index] = value;
     setOtp(updated);
 
-    // Auto advance focus to next input
     if (value && index < 5) {
       const nextInput = document.getElementById(`otp-input-${index + 1}`);
       if (nextInput) nextInput.focus();
@@ -71,7 +68,6 @@ export default function LoginScreen({ onLoginSuccess }) {
   const handleUseLiveLocation = async () => {
     setIsLocating(true);
     try {
-      // 1. Ask permission to turn on / access location on user device
       const perm = await requestLocationPermission();
       if (!perm.granted) {
         alert(perm.error || "Location access permission was denied. Please allow location in your device settings.");
@@ -79,11 +75,9 @@ export default function LoginScreen({ onLoginSuccess }) {
         return;
       }
 
-      // 2. Fetch actual local device coordinates
       const coords = await getCurrentDeviceLocation();
       setUserCoords({ lat: coords.lat, lng: coords.lng });
 
-      // 3. Reverse geocode to real local address
       const formattedAddress = await reverseGeocodeCoords(coords.lat, coords.lng);
       setAddress(formattedAddress);
       setLocationSent(true);
@@ -98,229 +92,219 @@ export default function LoginScreen({ onLoginSuccess }) {
             setIsLocating(false);
           },
           () => {
-            setAddress("BMSCE Campus, Bull Temple Rd, Basavanagudi, Bengaluru");
+            setAddress("Dayananda Sagar College of Engineering, Kumaraswamy Layout, Bengaluru");
+            setLocationSent(true);
             setIsLocating(false);
-          },
-          { timeout: 4000 }
+          }
         );
-      } else {
-        setAddress("BMSCE Campus, Bull Temple Rd, Basavanagudi, Bengaluru");
-        setIsLocating(false);
+        return;
       }
+      setAddress("Dayananda Sagar College of Engineering, Kumaraswamy Layout, Bengaluru");
+      setLocationSent(true);
     } finally {
       setIsLocating(false);
     }
   };
 
   const handleSubmit = (e) => {
-    e?.preventDefault();
-    setErrorMessage("");
+    e.preventDefault();
 
     if (!name.trim()) {
-      setErrorMessage("Please enter your full name.");
+      setErrorMessage("Please enter your name.");
       return;
     }
     if (!address.trim()) {
-      setErrorMessage("Please enter your location or tap 'Use Current GPS'.");
+      setErrorMessage("Please provide your home or zone address.");
       return;
     }
     const cleanPhone = phone.replace(/\D/g, '');
     if (cleanPhone.length !== 10) {
-      setErrorMessage("Please enter a valid 10-digit mobile number.");
+      setErrorMessage("Please enter a 10-digit mobile number.");
       return;
     }
 
-    const enteredOtp = otp.join("");
-    if (enteredOtp.length !== 6) {
-      setErrorMessage("Please generate and enter the 6-digit OTP code.");
+    if (!otpSent) {
+      handleGenerateOtp();
       return;
     }
 
-    if (generatedOtp && enteredOtp !== generatedOtp) {
-      setErrorMessage("Incorrect OTP code. Please enter the generated code.");
+    const enteredOtp = otp.join('');
+    if (enteredOtp !== generatedOtp) {
+      setErrorMessage("Invalid OTP code. Tap 'Auto-fill' or check code above.");
       return;
     }
 
+    const existing = getUserByPhone(cleanPhone);
     const userData = {
       name: name.trim(),
       address: address.trim(),
       phone: `+91 ${cleanPhone}`,
-      contacts: getUserByPhone(cleanPhone)?.contacts || [],
-      coords: userCoords
+      coords: userCoords || { lat: 12.9081, lng: 77.5670 },
+      avatar: existing?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
+      contacts: existing?.contacts || []
     };
 
     saveUser(userData);
     onLoginSuccess && onLoginSuccess(userData);
   };
 
+  const cleanPhone = phone.replace(/\D/g, '');
+  const canSendOtp = cleanPhone.length === 10;
+
   return (
-    <div className="relative w-full h-full flex flex-col justify-between bg-white text-slate-900 px-6 py-7 select-none overflow-y-auto no-scrollbar">
-      {/* Top Header */}
+    <div className="relative w-full h-full flex flex-col justify-between bg-white text-slate-900 px-7 py-8 select-none overflow-y-auto no-scrollbar">
+      {/* Top Header matching exact screenshot typography */}
       <div>
-        <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-xs border border-slate-100 mb-3 flex-shrink-0">
-          <img src="/logo.png" alt="Jagrath Logo" className="w-full h-full object-cover" />
-        </div>
-        <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-          Welcome to Jagrath
-        </h2>
-        <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-          Create or log in to your personal emergency safety profile.
+        <span className="text-[#DE354C] text-[17px] font-normal block mb-2 tracking-tight">
+          Jaagruth
+        </span>
+        <h1 className="text-[26px] sm:text-[28px] font-normal text-slate-900 tracking-tight leading-tight mb-2">
+          Create your safety profile
+        </h1>
+        <p className="text-[15px] font-normal text-slate-500 leading-snug">
+          We'll use these details to coordinate help<br />during an active incident.
         </p>
 
         {existingUserFound && (
-          <div className="mt-2.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-emerald-800 text-xs">
-            <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+          <div className="mt-3 px-3.5 py-2 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-emerald-800 text-[13px] font-normal">
+            <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
             <span>Profile found! Loaded your previous details.</span>
           </div>
         )}
       </div>
 
-      {/* Main Form Fields */}
-      <form onSubmit={handleSubmit} className="space-y-3.5 my-auto py-2">
-        {/* Full Name */}
+      {/* Main Input Stack matching screenshot */}
+      <form onSubmit={handleSubmit} className="space-y-4 my-auto py-4">
+        {/* Input 1: Your name */}
         <div>
-          <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">
-            Full Name
-          </label>
-          <div className="relative flex items-center">
-            <User className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
-            <input
-              type="text"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter your name"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#EA3B52] transition-colors"
-            />
-          </div>
+          <input
+            type="text"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name"
+            className="w-full h-[54px] bg-white border border-slate-300 rounded-2xl px-4 text-[16px] font-normal text-slate-900 placeholder:text-slate-700 focus:outline-none focus:border-[#DE354C] transition-colors"
+          />
         </div>
 
-        {/* Current Address & Send Live Location Button */}
+        {/* Input 2: Home address */}
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-              Address / Home Zone
-            </label>
-            <button
-              type="button"
-              onClick={handleUseLiveLocation}
-              disabled={isLocating}
-              className="text-[11px] font-bold text-[#EA3B52] hover:text-[#d92d44] flex items-center gap-1 transition-colors"
-            >
-              <Navigation className={`w-3 h-3 ${isLocating ? 'animate-spin' : ''}`} />
-              <span>{isLocating ? 'Detecting...' : (locationSent ? 'Live GPS Linked ✓' : 'Use Current GPS')}</span>
-            </button>
-          </div>
-          <div className="relative flex items-center">
-            <MapPin className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
-            <input
-              type="text"
-              required
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="e.g. BMSCE Campus, Bull Temple Rd, Bengaluru"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#EA3B52] transition-colors"
-            />
-          </div>
+          <input
+            type="text"
+            required
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="Home address"
+            className="w-full h-[54px] bg-white border border-slate-300 rounded-2xl px-4 text-[16px] font-normal text-slate-900 placeholder:text-slate-700 focus:outline-none focus:border-[#DE354C] transition-colors"
+          />
         </div>
 
-        {/* Mobile Number Field */}
+        {/* Pill Button: Use my GPS */}
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-              Mobile Number
-            </label>
-            <button
-              type="button"
-              onClick={handleGenerateOtp}
-              className="text-[11px] font-bold text-[#EA3B52] hover:text-[#d92d44] flex items-center gap-1 transition-colors"
-            >
-              <KeyRound className="w-3 h-3" />
-              <span>{otpSent ? 'Regenerate OTP' : 'Send OTP'}</span>
-            </button>
-          </div>
-          <div className="flex gap-2">
-            <div className="bg-slate-100 border border-slate-200 rounded-xl px-2.5 py-2.5 text-xs font-bold text-slate-700 flex items-center">
-              +91
-            </div>
-            <div className="relative flex-1 flex items-center">
-              <Phone className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
-              <input
-                type="tel"
-                maxLength={10}
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                placeholder="10-digit mobile number"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#EA3B52] transition-colors"
-              />
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={handleUseLiveLocation}
+            disabled={isLocating}
+            className="w-full h-[48px] bg-white border border-slate-300 rounded-full text-[15px] font-medium text-slate-800 hover:bg-slate-50 active:bg-slate-100 transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
+          >
+            {isLocating
+              ? 'Detecting GPS...'
+              : (locationSent ? 'Live GPS Linked ✓' : 'Use my GPS')}
+          </button>
         </div>
+
+        {/* Input 3: 10-digit phone number */}
+        <div>
+          <input
+            type="tel"
+            maxLength={10}
+            required
+            value={phone}
+            onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+            placeholder="10-digit phone number"
+            className="w-full h-[54px] bg-white border border-slate-300 rounded-2xl px-4 text-[16px] font-normal text-slate-900 placeholder:text-slate-700 focus:outline-none focus:border-[#DE354C] transition-colors"
+          />
+        </div>
+
+        {/* Microcopy matching screenshot */}
+        <p className="text-[13px] font-normal text-slate-500 leading-snug">
+          Your location is shared only during an active incident.
+        </p>
 
         {/* On-Screen Generated OTP Card */}
-        {generatedOtp && (
-          <div className="p-3 bg-rose-50/70 border border-rose-200 rounded-2xl animate-scaleIn">
+        {otpSent && (
+          <div className="p-3.5 bg-rose-50/80 border border-rose-200 rounded-2xl animate-scaleIn space-y-2 mt-2">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-rose-800 text-[11px] font-bold">
-                <Sparkles className="w-3.5 h-3.5 text-[#EA3B52]" />
-                <span>Verification OTP (Simulated SMS):</span>
+              <div className="flex items-center gap-1.5 text-rose-800 text-[12px] font-medium">
+                <Sparkles className="w-3.5 h-3.5 text-[#DE354C]" />
+                <span>Simulated SMS Code:</span>
               </div>
               <button
                 type="button"
                 onClick={handleAutoFillOtp}
-                className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#EA3B52] text-white hover:bg-[#d92d44] transition-all"
+                className="text-[11px] font-medium px-2.5 py-1 rounded-lg bg-[#DE354C] text-white hover:bg-[#cf2f44] transition-all cursor-pointer"
               >
                 Auto-fill
               </button>
             </div>
-            <div className="mt-1 flex items-center justify-between">
-              <span className="font-mono text-base font-black tracking-widest text-[#EA3B52]">
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-lg font-medium tracking-widest text-[#DE354C]">
                 {generatedOtp}
               </span>
-              <span className="text-[10px] text-slate-500">
+              <span className="text-[11px] text-slate-500">
                 Tap auto-fill or enter below
               </span>
+            </div>
+
+            {/* 6-Digit OTP Input Boxes */}
+            <div className="grid grid-cols-6 gap-1.5 pt-1">
+              {otp.map((digit, idx) => (
+                <input
+                  key={idx}
+                  id={`otp-input-${idx}`}
+                  type="text"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleOtpChange(idx, e.target.value)}
+                  placeholder="•"
+                  className="w-full h-11 bg-white border border-slate-300 rounded-xl text-center text-base font-medium text-slate-900 focus:outline-none focus:border-[#DE354C] transition-all"
+                />
+              ))}
             </div>
           </div>
         )}
 
-        {/* 6-Digit OTP Input Boxes */}
-        <div>
-          <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-            Enter 6-Digit Code
-          </label>
-          <div className="grid grid-cols-6 gap-1.5">
-            {otp.map((digit, idx) => (
-              <input
-                key={idx}
-                id={`otp-input-${idx}`}
-                type="text"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => handleOtpChange(idx, e.target.value)}
-                placeholder="•"
-                className="w-full h-10 bg-slate-50 border border-slate-200 rounded-xl text-center text-sm font-bold text-slate-900 focus:outline-none focus:border-[#EA3B52] transition-all"
-              />
-            ))}
-          </div>
-        </div>
-
         {/* Error message */}
         {errorMessage && (
-          <p className="text-xs text-rose-500 font-semibold text-center mt-1">
+          <p className="text-[13px] text-rose-500 font-normal text-center">
             {errorMessage}
           </p>
         )}
 
-        {/* Submit Button */}
-        <button
-          type="submit"
-          className="w-full mt-2 py-3.5 bg-[#EA3B52] hover:bg-[#d92d44] text-white font-bold rounded-2xl text-xs flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.98]"
-        >
-          <span>Continue to Jagrath</span>
-          <ArrowRight className="w-4 h-4" />
-        </button>
+        {/* Action Button matching screenshot */}
+        <div className="pt-2">
+          {!otpSent ? (
+            <button
+              type="button"
+              onClick={handleGenerateOtp}
+              disabled={!canSendOtp}
+              className={`w-full h-[52px] rounded-full text-[15px] font-medium transition-all flex items-center justify-center cursor-pointer ${
+                canSendOtp
+                  ? 'bg-[#DE354C] text-white hover:bg-[#cf2f44] shadow-sm active:scale-[0.99]'
+                  : 'bg-[#EEF2F6] text-[#9CA3AF] cursor-not-allowed'
+              }`}
+            >
+              Send simulated OTP
+            </button>
+          ) : (
+            <button
+              type="submit"
+              className="w-full h-[52px] bg-[#DE354C] hover:bg-[#cf2f44] text-white rounded-full text-[15px] font-medium shadow-sm transition-all active:scale-[0.99] flex items-center justify-center cursor-pointer"
+            >
+              Verify & Enter Jagrath
+            </button>
+          )}
+        </div>
       </form>
     </div>
   );

@@ -8,9 +8,9 @@ export default function BottomNavBar({ activeTab, onSelectTab }) {
         {/* Tab 1: Home */}
         <button
           onClick={() => onSelectTab('home')}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-full font-bold text-[12px] transition-all ${
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-full font-medium text-[12px] transition-all ${
             activeTab === 'home'
-              ? 'bg-[#EA3B52] text-white shadow-sm'
+              ? 'bg-[#DE354C] text-white shadow-sm'
               : 'text-slate-400 hover:text-slate-600'
           }`}
         >
@@ -21,9 +21,9 @@ export default function BottomNavBar({ activeTab, onSelectTab }) {
         {/* Tab 2: Activity Log */}
         <button
           onClick={() => onSelectTab('activity')}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-full font-bold text-[12px] transition-all ${
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-full font-medium text-[12px] transition-all ${
             activeTab === 'activity'
-              ? 'bg-[#EA3B52] text-white shadow-sm'
+              ? 'bg-[#DE354C] text-white shadow-sm'
               : 'text-slate-400 hover:text-slate-600'
           }`}
           title="Activity Log"
@@ -35,9 +35,9 @@ export default function BottomNavBar({ activeTab, onSelectTab }) {
         {/* Tab 3: Contacts & Helpers */}
         <button
           onClick={() => onSelectTab('contacts')}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-full font-bold text-[12px] transition-all ${
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-full font-medium text-[12px] transition-all ${
             activeTab === 'contacts'
-              ? 'bg-[#EA3B52] text-white shadow-sm'
+              ? 'bg-[#DE354C] text-white shadow-sm'
               : 'text-slate-400 hover:text-slate-600'
           }`}
           title="Trusted Contacts & Helpers"
@@ -49,9 +49,9 @@ export default function BottomNavBar({ activeTab, onSelectTab }) {
         {/* Tab 4: Safety Profile & Settings */}
         <button
           onClick={() => onSelectTab('profile')}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-full font-bold text-[12px] transition-all ${
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-full font-medium text-[12px] transition-all ${
             activeTab === 'profile'
-              ? 'bg-[#EA3B52] text-white shadow-sm'
+              ? 'bg-[#DE354C] text-white shadow-sm'
               : 'text-slate-400 hover:text-slate-600'
           }`}
           title="Safety Profile"

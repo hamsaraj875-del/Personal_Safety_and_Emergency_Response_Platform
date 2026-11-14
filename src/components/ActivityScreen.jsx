@@ -46,10 +46,10 @@ export default function ActivityScreen({
             <FileText className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-900">
+            <h2 className="text-[20px] font-normal text-slate-900 tracking-tight">
               Activity & Safety Log
             </h2>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[13px] text-slate-500 font-normal">
               Unaltered records of every emergency response
             </p>
           </div>

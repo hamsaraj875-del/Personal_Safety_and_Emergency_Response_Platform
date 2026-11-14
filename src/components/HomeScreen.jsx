@@ -62,10 +62,10 @@ export default function HomeScreen({
       <div className="pt-8 px-6 pb-2">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[13px] text-slate-400 font-medium tracking-tight">
+            <p className="text-[13px] text-slate-400 font-normal tracking-tight">
               Welcome back,
             </p>
-            <h2 className="text-[18px] font-bold text-slate-900 tracking-tight">
+            <h2 className="text-[18px] font-medium text-slate-900 tracking-tight">
               {activeUser.name}
             </h2>
           </div>
@@ -77,7 +77,7 @@ export default function HomeScreen({
               alt={activeUser.name}
               className="w-11 h-11 rounded-full object-cover border-2 border-slate-100 shadow-sm"
             />
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#EA3B52] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#DE354C] text-white text-[10px] font-medium rounded-full flex items-center justify-center border-2 border-white shadow-sm">
               2
             </span>
           </div>
@@ -87,10 +87,10 @@ export default function HomeScreen({
       {/* Main Center Emergency Section matching screenshot */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 -mt-2">
         {/* Title & Subtitle matching screenshot */}
-        <h1 className="text-[24px] font-extrabold text-slate-900 text-center tracking-tight">
+        <h1 className="text-[24px] font-normal text-slate-900 text-center tracking-tight leading-tight">
           Are you in emergency?
         </h1>
-        <p className="text-[13px] text-slate-400 text-center mt-1.5 max-w-[260px] leading-snug">
+        <p className="text-[14px] font-normal text-slate-500 text-center mt-1.5 max-w-[270px] leading-snug">
           Press the button below help will reach you soon.
         </p>
 
@@ -164,16 +164,16 @@ export default function HomeScreen({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1">
                 <MapPin className="w-3 h-3 text-[#EA3B52]" />
-                <h4 className="text-[12px] font-bold text-slate-800">
+                <h4 className="text-[12px] font-medium text-slate-800">
                   Your current address
                 </h4>
               </div>
-              <span className="text-[10px] font-bold text-[#EA3B52] flex items-center gap-0.5">
+              <span className="text-[10px] font-medium text-[#DE354C] flex items-center gap-0.5">
                 <Navigation className={`w-2.5 h-2.5 ${isLocating ? 'animate-spin' : ''}`} />
                 {isLocating ? 'Locating...' : 'GPS Sync'}
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
+            <p className="text-[12px] text-slate-500 font-normal truncate mt-0.5">
               {activeUser.address}
             </p>
           </div>
