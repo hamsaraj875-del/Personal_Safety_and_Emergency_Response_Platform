@@ -1,73 +1,138 @@
 // Authority Command & Regional Analytics Engine
-// Dynamically generates surrounding data anchored to the Authority's GPS location
+// 50,000+ Scale Citywide Telemetry & License Plate AI (ANPR)
 
 export function generateSectorData(centerLat = 12.9352, centerLng = 77.5358) {
-  // Offset generator helper (roughly ~111km per lat deg, ~100km per lng deg)
   const offset = (dLatKm, dLngKm) => ({
     lat: parseFloat((centerLat + dLatKm / 111).toFixed(5)),
     lng: parseFloat((centerLng + dLngKm / 100).toFixed(5))
   });
 
-  // 1. Where Most Accidents Are Happening (Top 5 High-Risk Collision Corridors)
+  // 1. Where Most Accidents Are Happening (50,000+ Analyzed Dataset)
   const accidentHotspots = [
     {
       id: "hotspot_01",
       name: "Outer Ring Rd & Bull Temple Junction",
       location: offset(1.4, -0.8),
-      collisionCount: 19,
+      collisionCount: 1420,
+      totalAnalyzed: 50000,
       riskLevel: "CRITICAL",
       peakHours: "21:30 – 02:00",
-      primaryCause: "2-wheeler night speed differential & unlit median",
+      primaryCause: "Night 2-wheeler speed differential & unlit median",
       radiusMeters: 450,
-      recentTrend: "+14% this month"
+      trend: "+14% weekend surge",
+      dangerScore: 94
     },
     {
       id: "hotspot_02",
       name: "National College Metro Link",
       location: offset(-0.9, 1.2),
-      collisionCount: 14,
+      collisionCount: 980,
+      totalAnalyzed: 50000,
       riskLevel: "HIGH",
       peakHours: "18:00 – 21:00",
-      primaryCause: "High-density pedestrian crossing conflict",
+      primaryCause: "Pedestrian crossing rush & blind bus halt",
       radiusMeters: 350,
-      recentTrend: "-5% (patrol presence active)"
+      trend: "-5% under patrol",
+      dangerScore: 82
     },
     {
       id: "hotspot_03",
-      name: "Basavanagudi Market West Corridor",
+      name: "Basavanagudi Market West Arterial",
       location: offset(-1.8, -0.6),
-      collisionCount: 11,
+      collisionCount: 760,
+      totalAnalyzed: 50000,
       riskLevel: "HIGH",
       peakHours: "19:30 – 23:00",
-      primaryCause: "Narrow freight merge & mixed vehicular traffic",
+      primaryCause: "Mixed auto-rickshaw & delivery bike congestion",
       radiusMeters: 300,
-      recentTrend: "+8% this week"
+      trend: "+8% this week",
+      dangerScore: 78
     },
     {
       id: "hotspot_04",
       name: "South End Circle Bottleneck",
       location: offset(0.8, 2.1),
-      collisionCount: 8,
+      collisionCount: 540,
+      totalAnalyzed: 50000,
       riskLevel: "MODERATE",
       peakHours: "13:30 – 16:00",
-      primaryCause: "Blind left turn from secondary arterial lane",
+      primaryCause: "Sudden left-turn weave from flyover slip road",
       radiusMeters: 250,
-      recentTrend: "Stable"
+      trend: "Stable",
+      dangerScore: 65
     },
     {
       id: "hotspot_05",
       name: "Lalbagh West Gate Highway Feed",
       location: offset(2.3, 1.1),
-      collisionCount: 7,
+      collisionCount: 410,
+      totalAnalyzed: 50000,
       riskLevel: "MODERATE",
       peakHours: "00:30 – 04:30",
-      primaryCause: "Heavy transport lorry blind spots",
+      primaryCause: "Heavy intercity freight truck blind spots",
       radiusMeters: 400,
-      recentTrend: "+12% on weekends"
+      trend: "+12% late nights",
+      dangerScore: 58
     }
   ];
 
-  // 2. How Everything Is Going Around The Place (Active Emergencies Feed)
+  // 2. License Plate AI / ANPR (Automatic Number Plate Recognition & Hit-and-Run Tracking)
+  const licensePlateDetections = [
+    {
+      id: "anpr_01",
+      plateNumber: "KA-01-MJ-8921",
+      vehicleModel: "Black Toyota Fortuner",
+      timestamp: "Just now (00:14 ago)",
+      locationName: "Outer Ring Rd Cam #04",
+      speedKmh: 84,
+      status: "HIT & RUN ALERT",
+      confidence: "99.4%",
+      alertType: "CRITICAL",
+      reason: "Matched description of pedestrian collision near Bull Temple Rd. Fled scene without stopping.",
+      image: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=400&q=80"
+    },
+    {
+      id: "anpr_02",
+      plateNumber: "KA-05-NB-4412",
+      vehicleModel: "White Hyundai Creta",
+      timestamp: "2 mins ago",
+      locationName: "National College Jn Cam #02",
+      speedKmh: 42,
+      status: "AMBULANCE BLOCKER",
+      confidence: "98.8%",
+      alertType: "WARNING",
+      reason: "Repeatedly blocking designated green corridor for Ambulance KA-01-EA-104.",
+      image: "https://images.unsplash.com/photo-1508974239320-0a029497e820?auto=format&fit=crop&w=400&q=80"
+    },
+    {
+      id: "anpr_03",
+      plateNumber: "KA-04-EX-9910",
+      vehicleModel: "Silver Maruti Swift",
+      timestamp: "4 mins ago",
+      locationName: "South End Circle Cam #01",
+      speedKmh: 35,
+      status: "STOLEN VEHICLE MATCH",
+      confidence: "97.6%",
+      alertType: "ALERT",
+      reason: "Active FIR #892 registered at Jayanagar Police Station (Stolen 2 days ago).",
+      image: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=400&q=80"
+    },
+    {
+      id: "anpr_04",
+      plateNumber: "KA-02-ZZ-3301",
+      vehicleModel: "Red Honda City",
+      timestamp: "7 mins ago",
+      locationName: "Lalbagh West Gate Cam #03",
+      speedKmh: 48,
+      status: "CLEAR / VERIFIED",
+      confidence: "99.8%",
+      alertType: "NORMAL",
+      reason: "Normal commute vehicle, valid insurance, zero outstanding emergency flags.",
+      image: "https://images.unsplash.com/photo-1541348263662-e0c8de4259ba?auto=format&fit=crop&w=400&q=80"
+    }
+  ];
+
+  // 3. Active Emergencies (Live Pulse)
   const activeIncidents = [
     {
       id: "INC-892401",
@@ -82,7 +147,7 @@ export function generateSectorData(centerLat = 12.9352, centerLng = 77.5358) {
       status: "EN_ROUTE",
       assignedUnit: "ALS-Ambulance #04 (Driver: Ramesh)",
       assignedEta: "3.2 min",
-      ladderDetails: "Contact 1 (Mother) Alerted • Responder Emily Dayton Dispatched",
+      ladderDetails: "Family Notified • First Responder Emily Dayton Dispatched",
       telemetry: { speed: "0 km/h", accuracy: "6m", battery: "74%" }
     },
     {
@@ -98,7 +163,7 @@ export function generateSectorData(centerLat = 12.9352, centerLng = 77.5358) {
       status: "NOTIFYING",
       assignedUnit: "Patrol Escort #02",
       assignedEta: "4.5 min",
-      ladderDetails: "Contact 1 Ignored (30s timeout) • Escalated to Contact 2 & Security",
+      ladderDetails: "Contact 1 Timeout (30s) • Escalated to Contact 2 & Campus Security",
       telemetry: { speed: "4.2 km/h", accuracy: "8m", battery: "62%" }
     },
     {
@@ -119,7 +184,7 @@ export function generateSectorData(centerLat = 12.9352, centerLng = 77.5358) {
     }
   ];
 
-  // 3. Where Most Ambulances Have To Be Displaced (Fleet Rebalancing)
+  // 4. Ambulance Fleet & Clean Before/After Rebalancing
   const ambulanceFleet = [
     {
       id: "amb_01",
@@ -128,7 +193,6 @@ export function generateSectorData(centerLat = 12.9352, centerLng = 77.5358) {
       driver: "Ramesh K.",
       status: "Dispatched",
       location: offset(0.6, 0.2),
-      targetIncident: "INC-892401",
       fuel: "86%",
       etaToIncident: "3.2 min"
     },
@@ -139,7 +203,6 @@ export function generateSectorData(centerLat = 12.9352, centerLng = 77.5358) {
       driver: "Anand M.",
       status: "On Scene",
       location: offset(1.6, -1.4),
-      targetIncident: "INC-892388",
       fuel: "72%",
       etaToIncident: "Arrived"
     },
@@ -189,7 +252,7 @@ export function generateSectorData(centerLat = 12.9352, centerLng = 77.5358) {
     }
   ];
 
-  // AI Coverage Blind Spot (Zone where arrival ETA currently exceeds 8 minutes)
+  // Coverage Blind Spot & Rebalancing
   const coverageBlindSpot = {
     id: "blind_spot_01",
     name: "Outer Ring Road Junction 4 (East Corridor)",
@@ -197,47 +260,43 @@ export function generateSectorData(centerLat = 12.9352, centerLng = 77.5358) {
     currentEtaMinutes: 11.4,
     recommendedEtaMinutes: 4.2,
     deficitSeverity: "HIGH",
-    reason: "Zero active emergency units stationed within a 3.5 km perimeter during night transit peak."
+    reason: "Zero emergency vehicles within 3.5 km radius during night hours."
   };
 
-  // AI Fleet Displacement Action Plan
   const displacementPlan = {
-    recommendedMove: "Rebalance 2 ALS Ambulances from Victoria Depot → Outer Ring Junction 4",
+    actionTitle: "Rebalance 2 ALS Ambulances to Outer Ring Junction 4",
+    currentEta: "11.4 min",
+    optimizedEta: "4.2 min",
+    timeSaved: "7.2 min faster response",
     candidateVehicles: ["KA-01-EA-312", "KA-01-EA-415"],
     targetStagingLocation: offset(2.0, -1.1),
-    projectedEtaSavings: "7.2 min faster response for 14,000 residents",
-    urgency: "HIGH",
     isExecuted: false
   };
 
-  // 4. How Many False Cases (False Alarm Audit Statistics)
+  // 5. Clean, Simple False Cases Breakdown (Citywide Scale: 50,000 Alerts)
   const falseCaseStats = {
-    totalAlertsLast30Days: 142,
-    confirmedEmergencies: 112, // 78.9%
-    cancelledInBuffer: 21,      // 14.8% (5-sec buffer aborts)
-    verifiedFalseAlarms: 9,     // 6.3% (field verified)
-    falseRatePercent: 14.8,     // Standard metric
-    bufferSavingsEstimateHours: "18.4 hours of saved dispatch time",
-    breakdown: [
-      { reason: "5-Sec Buffer Abort (Pocket Dial)", count: 21, share: "70%" },
-      { reason: "Resolved with PIN < 60s", count: 6, share: "20%" },
-      { reason: "Duplicate Alert for Same Accident", count: 3, share: "10%" }
-    ],
-    hoaxCorridorFlagged: "Sector 3 Bus Terminal (repeated pocket dials due to transit vibration)"
+    totalCitywideAlerts: 50000,
+    confirmedEmergenciesCount: 39450, // 78.9%
+    cancelledInBufferCount: 7400,      // 14.8%
+    fieldFalseAlarmsCount: 3150,       // 6.3%
+    hoursSavedByBuffer: "18,400 hours",
+    topAccidentalPocketDialSpot: "Sector 3 Bus Terminal (Pocket friction during bus boarding)"
   };
 
   return {
-    sectorName: "Bengaluru South Emergency Sector",
+    sectorName: "Bengaluru South Emergency Command",
     centerCoords: { lat: centerLat, lng: centerLng },
     telemetry: {
+      totalAnalyzed: "50,000+",
       activeSosCount: 3,
       medianResponseTime: "03m 42s",
       ambulancesReadyCount: 4,
       totalAmbulancesCount: 6,
-      sectorStabilityScore: 92, // out of 100
-      falseCaseRate: 14.8
+      sectorStabilityScore: 94,
+      scannedPlatesCount: "50,000+"
     },
     accidentHotspots,
+    licensePlateDetections,
     activeIncidents,
     ambulanceFleet,
     coverageBlindSpot,
