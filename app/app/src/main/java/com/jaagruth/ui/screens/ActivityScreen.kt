@@ -92,12 +92,23 @@ fun ActivityScreen(
 
     fun getEventFriendlyName(type: String): String = when (type) {
         "PLATFORM_INIT" -> "Safety Network Connected"
+        "PERMISSION_GRANTED" -> "Permissions & Priority Circle Verified"
         "TRIGGERED" -> "SOS Alert Initiated"
+        "SOS_BUFFER_COMPLETED" -> "5.0s Buffer Completed (Locked Dispatch)"
+        "CALLING_PRIORITY_1" -> "Calling Priority #1 (Voice Auto-Dial)"
+        "PRIORITY_1_NO_ANSWER" -> "Priority #1 No Answer (20s Timeout)"
+        "CALLING_PRIORITY_2" -> "Calling Priority #2 (Voice Auto-Dial)"
+        "PRIORITY_2_NO_ANSWER" -> "Priority #2 No Answer (20s Timeout)"
+        "CALLING_PRIORITY_3" -> "Calling Priority #3 (Voice Auto-Dial)"
+        "PRIORITY_3_NO_ANSWER" -> "Priority #3 No Answer (20s Timeout)"
+        "ACKNOWLEDGED" -> "Contact Answered & Coordinated"
+        "RESPONDER_DISPATCHED" -> "Top Verified Responder Dispatched"
+        "112_ERSS_HANDOFF" -> "112 ERSS Official Handoff"
         "LADDER_STEP_1" -> "Contact 1 (Family) Alerted"
         "LADDER_STEP_2" -> "Contact 2 Alerted"
-        "RESPONDER_ASSIGNED" -> "First Responder (Emily) Dispatched"
+        "RESPONDER_ASSIGNED" -> "First Responder Dispatched"
         "RESOLVED_SAFE" -> "Alert Resolved Safely"
-        "FALSE_ALARM" -> "Cancelled by User (Safe)"
+        "FALSE_ALARM" -> "Cancelled in Buffer (Zero Calls Dispatched)"
         "DURESS_ESCALATION" -> "Silent Duress Escalation"
         else -> type.replace("_", " ")
     }

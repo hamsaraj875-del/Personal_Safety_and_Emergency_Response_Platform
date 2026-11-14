@@ -24,6 +24,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LocationOn
@@ -80,6 +82,7 @@ fun ContactsScreen(
     contacts: List<EmergencyContact>,
     onAddContact: (EmergencyContact) -> Unit,
     onDeleteContact: (String) -> Unit,
+    onReorderContact: ((fromIndex: Int, toIndex: Int) -> Unit)? = null,
     responders: List<VerifiedResponder>,
     selectedResponderId: String?,
     onSelectResponder: (VerifiedResponder) -> Unit,
@@ -261,16 +264,46 @@ fun ContactsScreen(
                                 }
                             }
 
-                            IconButton(
-                                onClick = { onDeleteContact(contact.id) },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Delete",
-                                    tint = Slate400,
-                                    modifier = Modifier.size(18.dp)
-                                )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (onReorderContact != null) {
+                                    IconButton(
+                                        onClick = { onReorderContact(index, index - 1) },
+                                        enabled = index > 0,
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.ArrowUpward,
+                                            contentDescription = "Move Up",
+                                            tint = if (index > 0) Slate700 else Slate200,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+
+                                    IconButton(
+                                        onClick = { onReorderContact(index, index + 1) },
+                                        enabled = index < contacts.size - 1,
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.ArrowDownward,
+                                            contentDescription = "Move Down",
+                                            tint = if (index < contacts.size - 1) Slate700 else Slate200,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+
+                                IconButton(
+                                    onClick = { onDeleteContact(contact.id) },
+                                    modifier = Modifier.size(30.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete",
+                                        tint = Slate400,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             }
                         }
                     }

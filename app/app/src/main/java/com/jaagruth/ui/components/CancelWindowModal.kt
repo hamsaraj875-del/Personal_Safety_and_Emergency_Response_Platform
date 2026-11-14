@@ -291,20 +291,26 @@ fun CancelWindowModal(
                     onClick = onAbort,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(44.dp),
+                        .height(48.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Slate100, contentColor = Slate700)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFEE2E2), // Crimson-50
+                        contentColor = JagrathPrimaryRed
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(1.5.dp, JagrathPrimaryRed.copy(alpha = 0.5f))
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp)
+                        tint = JagrathPrimaryRed,
+                        modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "I'm Safe — Cancel Alert",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
+                        text = "CANCEL SOS (False Alarm)",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = JagrathPrimaryRed
                     )
                 }
             }
