@@ -23,8 +23,8 @@ export default function IncidentInspectDrawer({ incident, onClose, onDirect112, 
       {/* Drawer Header */}
       <div className="p-6 border-b border-slate-100 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-2xl bg-rose-50 text-[#EA3B52] flex items-center justify-center">
-            <ShieldAlert className="w-5 h-5" />
+          <div className="w-10 h-10 rounded-2xl overflow-hidden shadow-xs border border-slate-100 flex-shrink-0">
+            <img src="/logo.png" alt="Jagrath Logo" className="w-full h-full object-cover" />
           </div>
           <div>
             <div className="flex items-center gap-2">

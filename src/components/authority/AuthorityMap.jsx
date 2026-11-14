@@ -195,13 +195,15 @@ export default function AuthorityMap({
     const stationIcon = window.L.divIcon({
       className: 'custom-station-pin',
       html: `
-        <div style="position: relative; width: 32px; height: 32px; display: flex; items: center; justify-content: center;">
-          <div style="position: absolute; width: 32px; height: 32px; background: rgba(234, 59, 82, 0.25); border-radius: 9999px; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
-          <div style="width: 18px; height: 18px; background: #0F172A; border: 3px solid #FFFFFF; border-radius: 9999px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); margin: auto;"></div>
+        <div style="position: relative; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;">
+          <div style="position: absolute; width: 34px; height: 34px; background: rgba(234, 59, 82, 0.3); border-radius: 9999px; animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+          <div style="width: 24px; height: 24px; border-radius: 9999px; overflow: hidden; border: 2px solid #FFFFFF; box-shadow: 0 4px 12px rgba(0,0,0,0.3); margin: auto;">
+            <img src="/logo.png" style="width: 100%; height: 100%; object-fit: cover;" />
+          </div>
         </div>
       `,
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
+      iconSize: [34, 34],
+      iconAnchor: [17, 17]
     });
     window.L.marker([centerCoords.lat, centerCoords.lng], { icon: stationIcon })
       .bindTooltip("Command HQ (Surrounding Center)", { permanent: false, direction: 'top' })
@@ -363,9 +365,11 @@ export default function AuthorityMap({
                   <span className="w-2 h-2 rounded-full bg-[#EA3B52] animate-pulse" />
                   <span>Command HQ (Surrounding Center)</span>
                 </div>
-                <div className="relative w-8 h-8 flex items-center justify-center">
-                  <div className="absolute w-8 h-8 bg-rose-500/30 rounded-full animate-ping" />
-                  <div className="w-4 h-4 bg-slate-900 border-2 border-white rounded-full shadow-md z-10" />
+                <div className="relative w-9 h-9 flex items-center justify-center">
+                  <div className="absolute w-9 h-9 bg-rose-500/35 rounded-full animate-ping" />
+                  <div className="w-7 h-7 rounded-full overflow-hidden border-2 border-white shadow-md z-10">
+                    <img src="/logo.png" alt="Command HQ" className="w-full h-full object-cover" />
+                  </div>
                 </div>
               </div>
             </AdvancedMarker>

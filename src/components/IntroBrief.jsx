@@ -25,10 +25,14 @@ export default function IntroBrief({ onComplete }) {
 
       {/* Center Highlighted Card matching the clean aesthetic */}
       <div className="my-auto w-full max-w-[320px] mx-auto text-left">
-        {/* Highlighted Badge */}
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold text-white border border-white/25 mb-4 shadow-sm">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
-          <span>Jagrath Safety Network</span>
+        {/* Highlighted Official Logo & Badge */}
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="w-10 h-10 rounded-2xl overflow-hidden shadow-md border border-white/40">
+            <img src="/logo.png" alt="Jagrath Logo" className="w-full h-full object-cover" />
+          </div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold text-white border border-white/25 shadow-sm">
+            <span>Jagrath Safety Network</span>
+          </div>
         </div>
 
         {/* Highlighted Main Heading */}

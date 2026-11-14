@@ -157,8 +157,8 @@ export default function LoginScreen({ onLoginSuccess }) {
     <div className="relative w-full h-full flex flex-col justify-between bg-white text-slate-900 px-6 py-7 select-none overflow-y-auto no-scrollbar">
       {/* Top Header */}
       <div>
-        <div className="w-10 h-10 rounded-2xl bg-rose-50 text-[#EA3B52] flex items-center justify-center mb-2.5 shadow-2xs">
-          <ShieldCheck className="w-5 h-5" />
+        <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-xs border border-slate-100 mb-3 flex-shrink-0">
+          <img src="/logo.png" alt="Jagrath Logo" className="w-full h-full object-cover" />
         </div>
         <h2 className="text-2xl font-black text-slate-900 tracking-tight">
           Welcome to Jagrath

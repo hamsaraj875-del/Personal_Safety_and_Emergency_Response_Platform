@@ -74,8 +74,8 @@ export default function AuthorityLoginModal({ onAuthorizeLocation, onClose }) {
         {/* Stage 1: Authority Credential / Badge Login */}
         {stage === 'badge' && (
           <div>
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-[#EA3B52] flex items-center justify-center mb-4 shadow-sm">
-              <Shield className="w-6 h-6" />
+            <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-sm border border-slate-200/80 mb-4 flex-shrink-0">
+              <img src="/logo.png" alt="Jagrath Logo" className="w-full h-full object-cover" />
             </div>
 
             <h2 className="text-2xl font-black tracking-tight text-slate-900">

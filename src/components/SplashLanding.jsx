@@ -32,11 +32,17 @@ export default function SplashLanding({ onComplete }) {
 
       {/* Center Animated Logo / Shield Icon */}
       <div className="relative z-10 flex flex-col items-center">
-        {/* Soft pulsing emblem */}
-        <div className="w-20 h-20 rounded-3xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center mb-6 shadow-2xl shadow-rose-950/40 animate-soft-pulse">
-          <svg className="w-10 h-10 text-white fill-current drop-shadow-md" viewBox="0 0 24 24">
-            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z" />
-          </svg>
+        {/* Official Jagrath Emblem with Animated Light Beacon Pulse */}
+        <div className="relative mb-6">
+          <div className="w-24 h-24 rounded-3xl overflow-hidden shadow-2xl shadow-rose-950/50 border-2 border-white/40 transform transition-transform hover:scale-105 animate-soft-pulse">
+            <img
+              src="/logo.png"
+              alt="Jagrath Logo"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          {/* Subtle emergency beacon light ray overlay */}
+          <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-16 h-8 bg-blue-400/30 blur-lg rounded-full animate-ping pointer-events-none" />
         </div>
 
         {/* Letter-by-Letter Animated Text */}
