@@ -172,6 +172,12 @@ fun JagrathAppContainer() {
         cleanBackupChain.add(genesis)
     }
 
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            WebSocketClient.disconnect()
+        }
+    }
+
     // Realtime WebSocket event listener when in MAIN stage
     LaunchedEffect(appStage) {
         if (appStage == AppStage.MAIN) {
@@ -375,7 +381,7 @@ fun JagrathAppContainer() {
             WebSocketClient.subscribeIncident(created.id)
 
             val ranked = ResponderMatcher.rankResponders(userCoords, noteText.ifEmpty { "general distress" }, responders)
-            activeResponder = ranked.first()
+            activeResponder = ranked.firstOrNull() ?: responders.firstOrNull() ?: InitialData.DEFAULT_RESPONDERS[0]
 
             appendAuditBlock(
                 eventType = "TRIGGERED",

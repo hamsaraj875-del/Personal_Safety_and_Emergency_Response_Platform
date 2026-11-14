@@ -2,24 +2,26 @@ package com.jaagruth.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.google.gson.Gson
 import com.jaagruth.data.local.MockDataSource
 import com.jaagruth.data.models.User
 import com.jaagruth.data.remote.LoginRequest
 import com.jaagruth.data.remote.NetworkClient
 import com.jaagruth.data.remote.RegisterRequest
 import com.jaagruth.data.remote.TokenStore
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 
 class AuthRepository(private val context: Context) {
 
     private val prefs: SharedPreferences = context.getSharedPreferences("jaagruth_auth_prefs", Context.MODE_PRIVATE)
-    private val gson = Gson()
+    private val gson = NetworkClient.gson
     private val apiService by lazy { NetworkClient.getApiService(context) }
+    private val repoScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val _currentUser = MutableStateFlow<User?>(null)
     val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
@@ -58,38 +60,37 @@ class AuthRepository(private val context: Context) {
             return Result.failure(IllegalArgumentException("Please enter your credentials."))
         }
 
-        if (!_isOfflineSimulated.value) {
-            try {
-                val res = runBlocking(Dispatchers.IO) {
-                    apiService.login(LoginRequest(emailOrPhone = emailOrPhone.trim(), password = password.trim()))
-                }
-                if (res.isSuccessful && res.body() != null) {
-                    val auth = res.body()!!
-                    TokenStore.saveToken(auth.token)
-                    TokenStore.saveUser(auth.user.id, auth.user.name, auth.user.phone)
-
-                    val user = User(
-                        id = auth.user.id,
-                        name = auth.user.name,
-                        phoneNumber = auth.user.phone,
-                        email = auth.user.email
-                    )
-                    saveUser(user)
-                    return Result.success(user)
-                }
-            } catch (e: Exception) {
-                // Fallback to local on network error
-            }
-        }
-
-        // Local fallback
-        val user = MockDataSource.defaultUser.copy(
+        val localUser = MockDataSource.defaultUser.copy(
             name = if (emailOrPhone.contains("@")) emailOrPhone.substringBefore("@").replaceFirstChar { it.uppercase() } else "Citizen User",
             phoneNumber = if (!emailOrPhone.contains("@")) emailOrPhone else MockDataSource.defaultUser.phoneNumber,
             email = if (emailOrPhone.contains("@")) emailOrPhone else MockDataSource.defaultUser.email
         )
-        saveUser(user)
-        return Result.success(user)
+        saveUser(localUser)
+
+        if (!_isOfflineSimulated.value) {
+            repoScope.launch {
+                try {
+                    val res = apiService.login(LoginRequest(emailOrPhone = emailOrPhone.trim(), password = password.trim()))
+                    if (res.isSuccessful && res.body() != null) {
+                        val auth = res.body()!!
+                        TokenStore.saveToken(auth.token)
+                        TokenStore.saveUser(auth.user.id, auth.user.name, auth.user.phone)
+
+                        val serverUser = User(
+                            id = auth.user.id,
+                            name = auth.user.name,
+                            phoneNumber = auth.user.phone,
+                            email = auth.user.email
+                        )
+                        saveUser(serverUser)
+                    }
+                } catch (e: Exception) {
+                    // Local fallback preserved
+                }
+            }
+        }
+
+        return Result.success(localUser)
     }
 
     fun register(name: String, phone: String, email: String, password: String): Result<User> {
@@ -97,10 +98,18 @@ class AuthRepository(private val context: Context) {
             return Result.failure(IllegalArgumentException("Please fill in valid registration details."))
         }
 
+        val localUser = User(
+            id = "usr_${System.currentTimeMillis()}",
+            name = name.trim(),
+            phoneNumber = phone.trim(),
+            email = email.trim()
+        )
+        saveUser(localUser)
+
         if (!_isOfflineSimulated.value) {
-            try {
-                val res = runBlocking(Dispatchers.IO) {
-                    apiService.register(
+            repoScope.launch {
+                try {
+                    val res = apiService.register(
                         RegisterRequest(
                             name = name.trim(),
                             phone = phone.trim(),
@@ -108,59 +117,41 @@ class AuthRepository(private val context: Context) {
                             password = password.trim()
                         )
                     )
+                    if (res.isSuccessful && res.body() != null) {
+                        val auth = res.body()!!
+                        TokenStore.saveToken(auth.token)
+                        TokenStore.saveUser(auth.user.id, auth.user.name, auth.user.phone)
+                        val serverUser = User(
+                            id = auth.user.id,
+                            name = auth.user.name,
+                            phoneNumber = auth.user.phone,
+                            email = auth.user.email
+                        )
+                        saveUser(serverUser)
+                    }
+                } catch (e: Exception) {
+                    // Local fallback preserved
                 }
-                if (res.isSuccessful && res.body() != null) {
-                    val auth = res.body()!!
-                    TokenStore.saveToken(auth.token)
-                    TokenStore.saveUser(auth.user.id, auth.user.name, auth.user.phone)
-
-                    val user = User(
-                        id = auth.user.id,
-                        name = auth.user.name,
-                        phoneNumber = auth.user.phone,
-                        email = auth.user.email
-                    )
-                    saveUser(user)
-                    return Result.success(user)
-                }
-            } catch (e: Exception) {
-                // Fallback to local
             }
         }
 
-        val user = User(
-            id = "user_${System.currentTimeMillis() % 10000}",
-            name = name,
-            phoneNumber = phone,
-            email = email
-        )
-        saveUser(user)
-        return Result.success(user)
+        return Result.success(localUser)
     }
 
     fun logout() {
-        _currentUser.value = null
         TokenStore.clear()
-        prefs.edit().remove(KEY_USER).apply()
+        _currentUser.value = MockDataSource.defaultUser
+        saveUser(MockDataSource.defaultUser)
     }
 
-    fun updateUser(user: User) {
-        saveUser(user)
+    fun setDemoMode(isDemo: Boolean) {
+        _isDemoMode.value = isDemo
+        prefs.edit().putBoolean(KEY_DEMO_MODE, isDemo).apply()
     }
 
-    private fun saveUser(user: User) {
-        _currentUser.value = user
-        prefs.edit().putString(KEY_USER, gson.toJson(user)).apply()
-    }
-
-    fun setDemoMode(enabled: Boolean) {
-        _isDemoMode.value = enabled
-        prefs.edit().putBoolean(KEY_DEMO_MODE, enabled).apply()
-    }
-
-    fun setOfflineSimulated(enabled: Boolean) {
-        _isOfflineSimulated.value = enabled
-        prefs.edit().putBoolean(KEY_OFFLINE, enabled).apply()
+    fun setOfflineSimulated(isOffline: Boolean) {
+        _isOfflineSimulated.value = isOffline
+        prefs.edit().putBoolean(KEY_OFFLINE, isOffline).apply()
     }
 
     fun setEscalationSpeedFast(isFast: Boolean) {
@@ -168,10 +159,36 @@ class AuthRepository(private val context: Context) {
         prefs.edit().putBoolean(KEY_SPEED_FAST, isFast).apply()
     }
 
+    fun updateSafetyPin(pin: String): Boolean {
+        if (pin.length == 4 && pin.all { it.isDigit() }) {
+            prefs.edit().putString(KEY_SAFETY_PIN, pin).apply()
+            return true
+        }
+        return false
+    }
+
+    fun updateDuressPin(pin: String): Boolean {
+        if (pin.length == 4 && pin.all { it.isDigit() }) {
+            prefs.edit().putString(KEY_DURESS_PIN, pin).apply()
+            return true
+        }
+        return false
+    }
+
+    fun getSafetyPin(): String = prefs.getString(KEY_SAFETY_PIN, "1234") ?: "1234"
+    fun getDuressPin(): String = prefs.getString(KEY_DURESS_PIN, "9999") ?: "9999"
+
+    private fun saveUser(user: User) {
+        _currentUser.value = user
+        prefs.edit().putString(KEY_USER, gson.toJson(user)).apply()
+    }
+
     companion object {
         private const val KEY_USER = "key_logged_user"
         private const val KEY_DEMO_MODE = "key_demo_mode"
         private const val KEY_OFFLINE = "key_offline_simulated"
-        private const val KEY_SPEED_FAST = "key_escalation_speed_fast"
+        private const val KEY_SPEED_FAST = "key_speed_fast"
+        private const val KEY_SAFETY_PIN = "key_safety_pin"
+        private const val KEY_DURESS_PIN = "key_duress_pin"
     }
 }

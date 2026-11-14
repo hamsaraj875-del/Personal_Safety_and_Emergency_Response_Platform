@@ -81,12 +81,16 @@ fun ProfileScreen(
 ) {
     var isSimulating by remember { mutableStateOf(false) }
     var simulationData by remember { mutableStateOf<BenchmarkResult?>(null) }
+    val scope = rememberCoroutineScope()
 
     fun handleRunSimulation() {
+        if (isSimulating) return
         isSimulating = true
-        val result = SimulationRunner.runFullBenchmarkSimulation()
-        simulationData = result
-        isSimulating = false
+        scope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            val result = SimulationRunner.runFullBenchmarkSimulation()
+            simulationData = result
+            isSimulating = false
+        }
     }
 
     Column(

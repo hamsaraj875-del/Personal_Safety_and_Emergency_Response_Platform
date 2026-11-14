@@ -70,6 +70,11 @@ fun LiveEmergencyMapView(
     val lifecycleOwner = LocalLifecycleOwner.current
     var currentZoom by remember { mutableDoubleStateOf(15.5) }
 
+    val safeUserLat = if (userPos.lat == 0.0 && userPos.lng == 0.0) 12.9352 else userPos.lat.coerceIn(-85.0, 85.0)
+    val safeUserLng = if (userPos.lat == 0.0 && userPos.lng == 0.0) 77.5358 else userPos.lng.coerceIn(-180.0, 180.0)
+    val safeRespLat = if (responderPos.lat == 0.0 && responderPos.lng == 0.0) 12.9362 else responderPos.lat.coerceIn(-85.0, 85.0)
+    val safeRespLng = if (responderPos.lat == 0.0 && responderPos.lng == 0.0) 77.5368 else responderPos.lng.coerceIn(-180.0, 180.0)
+
     val mapView = remember {
         Configuration.getInstance().load(context, context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE))
         MapView(context).apply {
@@ -80,7 +85,7 @@ fun LiveEmergencyMapView(
             minZoomLevel = 5.0
             maxZoomLevel = 19.0
             controller.setZoom(15.5)
-            controller.setCenter(GeoPoint(userPos.lat, userPos.lng))
+            controller.setCenter(GeoPoint(safeUserLat, safeUserLng))
 
             setOnTouchListener { v, _ ->
                 v.parent?.requestDisallowInterceptTouchEvent(true)
@@ -130,7 +135,7 @@ fun LiveEmergencyMapView(
 
         // 2. User marker
         val userMarker = Marker(mapView).apply {
-            position = GeoPoint(userPos.lat, userPos.lng)
+            position = GeoPoint(safeUserLat, safeUserLng)
             title = "You are here"
             snippet = "Live emergency location"
             icon = createTextMarkerDrawable(context, "📍", 42)
@@ -140,7 +145,7 @@ fun LiveEmergencyMapView(
 
         // 3. Responder marker
         val responderMarker = Marker(mapView).apply {
-            position = GeoPoint(responderPos.lat, responderPos.lng)
+            position = GeoPoint(safeRespLat, safeRespLng)
             title = activeResponder?.name ?: "1st Responder"
             snippet = "${activeResponder?.etaMinutes ?: 4} min ETA"
             icon = createTextMarkerDrawable(context, "🚑", 42)

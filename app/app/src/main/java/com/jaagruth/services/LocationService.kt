@@ -15,15 +15,23 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.jaagruth.data.local.MockDataSource
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
+import kotlin.math.abs
 
 class LocationService(private val context: Context) {
 
     private val fusedLocationClient: FusedLocationProviderClient =
         LocationServices.getFusedLocationProviderClient(context)
+
+    private val locationScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     data class LocationState(
         val latitude: Double = MockDataSource.DEFAULT_LATITUDE,
@@ -38,6 +46,8 @@ class LocationService(private val context: Context) {
     val locationState: StateFlow<LocationState> = _locationState.asStateFlow()
 
     private var isTracking = false
+    private var lastGeocodedLat = 0.0
+    private var lastGeocodedLng = 0.0
 
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
@@ -83,8 +93,9 @@ class LocationService(private val context: Context) {
     fun startEmergencyTracking() {
         if (isTracking || !hasLocationPermission()) return
 
+        // Throttle updates to 5-second interval with min 3-second interval
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000L)
-            .setMinUpdateIntervalMillis(2000L)
+            .setMinUpdateIntervalMillis(3000L)
             .build()
 
         try {
@@ -120,15 +131,39 @@ class LocationService(private val context: Context) {
     }
 
     private fun updateFromLocation(location: Location) {
-        val resolvedAddress = resolveAddress(location.latitude, location.longitude)
+        val current = _locationState.value
+
+        // Only update state if coordinates have actually changed
+        val latChanged = abs(current.latitude - location.latitude) > 0.00001
+        val lngChanged = abs(current.longitude - location.longitude) > 0.00001
+
+        if (!latChanged && !lngChanged && current.isGpsActive) {
+            return
+        }
+
+        // Immediately update coordinates on the main thread without blocking for geocoder
         _locationState.value = LocationState(
             latitude = location.latitude,
             longitude = location.longitude,
-            address = resolvedAddress,
+            address = current.address,
             isFallback = false,
             isGpsActive = true,
             lastUpdatedTime = System.currentTimeMillis()
         )
+
+        // Asynchronously resolve human-readable address on Dispatchers.IO only when moved > 50 meters
+        val distanceMoved = abs(lastGeocodedLat - location.latitude) + abs(lastGeocodedLng - location.longitude)
+        if (distanceMoved > 0.0005 || current.address.contains("Bengaluru")) {
+            lastGeocodedLat = location.latitude
+            lastGeocodedLng = location.longitude
+
+            locationScope.launch {
+                val resolved = resolveAddressAsync(location.latitude, location.longitude)
+                if (resolved != _locationState.value.address) {
+                    _locationState.value = _locationState.value.copy(address = resolved)
+                }
+            }
+        }
     }
 
     private fun useFallbackLocation(reason: String) {
@@ -142,8 +177,8 @@ class LocationService(private val context: Context) {
         )
     }
 
-    private fun resolveAddress(lat: Double, lng: Double): String {
-        return try {
+    private suspend fun resolveAddressAsync(lat: Double, lng: Double): String = withContext(Dispatchers.IO) {
+        return@withContext try {
             val geocoder = Geocoder(context, Locale.getDefault())
             val addresses = geocoder.getFromLocation(lat, lng, 1)
             if (!addresses.isNullOrEmpty()) {

@@ -200,7 +200,10 @@ fun ContactsScreen(
                     }
                 }
 
-                itemsIndexed(contacts) { index, contact ->
+                itemsIndexed(
+                    items = contacts,
+                    key = { _, contact -> contact.id.ifEmpty { contact.phone } }
+                ) { index, contact ->
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),
@@ -328,7 +331,10 @@ fun ContactsScreen(
                     }
                 }
 
-                itemsIndexed(responders) { _, resp ->
+                itemsIndexed(
+                    items = responders,
+                    key = { _, resp -> resp.id }
+                ) { _, resp ->
                     val isSelected = selectedResponderId == resp.id
 
                     Surface(

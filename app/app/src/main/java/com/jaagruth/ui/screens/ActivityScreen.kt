@@ -75,8 +75,10 @@ fun ActivityScreen(
 ) {
     var verificationResult by remember { mutableStateOf<VerificationResult?>(null) }
     var isVerifying by remember { mutableStateOf(false) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     fun handleVerify() {
+        if (isVerifying) return
         isVerifying = true
         if (onVerifyRecord != null) {
             onVerifyRecord { result ->
@@ -84,9 +86,11 @@ fun ActivityScreen(
                 isVerifying = false
             }
         } else {
-            val result = CryptoLedger.verifyChainIntegrity(chain)
-            verificationResult = result
-            isVerifying = false
+            scope.launch(kotlinx.coroutines.Dispatchers.Default) {
+                val result = CryptoLedger.verifyChainIntegrity(chain)
+                verificationResult = result
+                isVerifying = false
+            }
         }
     }
 
@@ -305,7 +309,10 @@ fun ActivityScreen(
                 )
             }
 
-            itemsIndexed(chain) { index, block ->
+            itemsIndexed(
+                items = chain,
+                key = { index, block -> "${block.index}_${block.hash.take(16)}" }
+            ) { index, block ->
                 val isBroken = verificationResult != null && !verificationResult!!.isValid && verificationResult!!.brokenIndex == index
 
                 Surface(
