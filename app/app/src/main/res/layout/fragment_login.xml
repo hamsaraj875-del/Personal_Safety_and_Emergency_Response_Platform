@@ -22,12 +22,11 @@
             app:layout_constraintTop_toTopOf="parent">
 
             <ImageView
-                android:layout_width="36dp"
-                android:layout_height="36dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:layout_gravity="center"
                 android:contentDescription="@null"
-                android:src="@drawable/ic_shield"
-                app:tint="@color/primary_red" />
+                android:src="@drawable/ic_jaagruth_logo" />
         </FrameLayout>
 
         <TextView

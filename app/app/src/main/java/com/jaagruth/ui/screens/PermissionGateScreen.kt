@@ -8,7 +8,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.jaagruth.R
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -219,16 +221,18 @@ fun PermissionGateScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(JagrathLightRose),
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .border(1.dp, JagrathPrimaryRed.copy(alpha = 0.2f), RoundedCornerShape(10.dp))
+                            .background(Color(0xFFAF1227)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Shield,
-                            contentDescription = null,
-                            tint = JagrathPrimaryRed,
-                            modifier = Modifier.size(20.dp)
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_jaagruth_logo),
+                            contentDescription = "Jagrath Logo",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(10.dp))
                         )
                     }
                     Spacer(modifier = Modifier.width(10.dp))

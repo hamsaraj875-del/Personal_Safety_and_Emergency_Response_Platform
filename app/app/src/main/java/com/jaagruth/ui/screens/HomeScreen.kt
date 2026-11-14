@@ -51,7 +51,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.painterResource
 import coil.compose.rememberAsyncImagePainter
+import com.jaagruth.R
 import com.jaagruth.model.UserProfile
 import com.jaagruth.theme.JagrathCrimson
 import com.jaagruth.theme.JagrathLightRose
@@ -109,19 +111,38 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(
-                    text = "Welcome back,",
-                    fontSize = 13.sp,
-                    color = Slate400,
-                    fontWeight = FontWeight.Normal
-                )
-                Text(
-                    text = userProfile.name,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Slate900
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(1.dp, JagrathPrimaryRed.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+                        .background(Color(0xFFAF1227)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_jaagruth_logo),
+                        contentDescription = "Jagrath Logo",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(12.dp))
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "Welcome back,",
+                        fontSize = 12.sp,
+                        color = Slate400,
+                        fontWeight = FontWeight.Normal
+                    )
+                    Text(
+                        text = userProfile.name,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Slate900
+                    )
+                }
             }
 
             // User Avatar with Red Badge '2'

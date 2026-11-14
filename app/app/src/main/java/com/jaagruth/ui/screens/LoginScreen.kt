@@ -143,15 +143,18 @@ fun LoginScreen(
             // Top Header with Logo
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(54.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .border(1.dp, Slate100, RoundedCornerShape(16.dp))
-                    .background(White)
+                    .border(1.5.dp, Slate200, RoundedCornerShape(16.dp))
+                    .background(Color(0xFFAF1227)),
+                contentAlignment = Alignment.Center
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.ic_shield),
+                    painter = painterResource(id = R.drawable.ic_jaagruth_logo),
                     contentDescription = "Jagrath Logo",
-                    modifier = Modifier.size(30.dp)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(16.dp))
                 )
             }
 

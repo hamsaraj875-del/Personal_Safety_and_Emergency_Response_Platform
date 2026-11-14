@@ -117,17 +117,19 @@ fun SplashLandingScreen(
             Box(
                 modifier = Modifier
                     .scale(pulseScale.value)
-                    .size(96.dp)
-                    .shadow(24.dp, RoundedCornerShape(24.dp))
-                    .clip(RoundedCornerShape(24.dp))
-                    .border(2.dp, White.copy(alpha = 0.4f), RoundedCornerShape(24.dp))
-                    .background(White),
+                    .size(108.dp)
+                    .shadow(24.dp, RoundedCornerShape(26.dp))
+                    .clip(RoundedCornerShape(26.dp))
+                    .border(2.dp, White.copy(alpha = 0.5f), RoundedCornerShape(26.dp))
+                    .background(Color(0xFFAF1227)),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.ic_shield),
+                    painter = painterResource(id = R.drawable.ic_jaagruth_logo),
                     contentDescription = "Jagrath Logo",
-                    modifier = Modifier.size(56.dp)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(26.dp))
                 )
             }
 

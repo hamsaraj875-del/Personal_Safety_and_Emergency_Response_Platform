@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -55,8 +56,15 @@ class NotificationService(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val logoBitmap = try {
+            BitmapFactory.decodeResource(context.resources, R.drawable.ic_jaagruth_logo)
+        } catch (e: Exception) {
+            null
+        }
+
         val notification = NotificationCompat.Builder(context, CHANNEL_EMERGENCY)
             .setSmallIcon(R.drawable.ic_shield)
+            .apply { if (logoBitmap != null) setLargeIcon(logoBitmap) }
             .setContentTitle("🚨 Jaagruth SOS Activated!")
             .setContentText("Emergency incident #$incidentId is active. Alerting contacts…")
             .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -73,8 +81,15 @@ class NotificationService(private val context: Context) {
     }
 
     fun showEscalationAlert(title: String, message: String) {
+        val logoBitmap = try {
+            BitmapFactory.decodeResource(context.resources, R.drawable.ic_jaagruth_logo)
+        } catch (e: Exception) {
+            null
+        }
+
         val notification = NotificationCompat.Builder(context, CHANNEL_ESCALATION)
             .setSmallIcon(R.drawable.ic_shield)
+            .apply { if (logoBitmap != null) setLargeIcon(logoBitmap) }
             .setContentTitle(title)
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

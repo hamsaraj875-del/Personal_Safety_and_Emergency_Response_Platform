@@ -112,15 +112,18 @@ fun IntroBriefScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(42.dp)
+                            .size(46.dp)
                             .clip(RoundedCornerShape(14.dp))
-                            .border(1.dp, White.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
-                            .background(White)
+                            .border(1.5.dp, White.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                            .background(Color(0xFFAF1227)),
+                        contentAlignment = Alignment.Center
                     ) {
                         Image(
-                            painter = painterResource(id = R.drawable.ic_shield),
+                            painter = painterResource(id = R.drawable.ic_jaagruth_logo),
                             contentDescription = "Jagrath Logo",
-                            modifier = Modifier.size(26.dp)
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(14.dp))
                         )
                     }
 
