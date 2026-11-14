@@ -1,5 +1,5 @@
 // Authority Command & Regional Analytics Engine
-// 50,000+ Scale Citywide Telemetry & License Plate AI (ANPR)
+// Realistic Bangalore Sector Emergency Telemetry & Vehicle Scanner (ANPR)
 
 export function generateSectorData(centerLat = 12.9352, centerLng = 77.5358) {
   const offset = (dLatKm, dLngKm) => ({
@@ -7,76 +7,76 @@ export function generateSectorData(centerLat = 12.9352, centerLng = 77.5358) {
     lng: parseFloat((centerLng + dLngKm / 100).toFixed(5))
   });
 
-  // 1. Where Most Accidents Are Happening (50,000+ Analyzed Dataset)
+  // 1. Where Most Accidents Are Happening (Realistic Sector Historical Collisions)
   const accidentHotspots = [
     {
       id: "hotspot_01",
       name: "Outer Ring Rd & Bull Temple Junction",
       location: offset(1.4, -0.8),
-      collisionCount: 1420,
-      totalAnalyzed: 50000,
+      collisionCount: 24,
+      totalAnalyzed: 142,
       riskLevel: "CRITICAL",
       peakHours: "21:30 – 02:00",
       primaryCause: "Night 2-wheeler speed differential & unlit median",
       radiusMeters: 450,
       trend: "+14% weekend surge",
-      dangerScore: 94
+      dangerScore: 92
     },
     {
       id: "hotspot_02",
       name: "National College Metro Link",
       location: offset(-0.9, 1.2),
-      collisionCount: 980,
-      totalAnalyzed: 50000,
+      collisionCount: 16,
+      totalAnalyzed: 142,
       riskLevel: "HIGH",
       peakHours: "18:00 – 21:00",
       primaryCause: "Pedestrian crossing rush & blind bus halt",
       radiusMeters: 350,
       trend: "-5% under patrol",
-      dangerScore: 82
+      dangerScore: 78
     },
     {
       id: "hotspot_03",
       name: "Basavanagudi Market West Arterial",
       location: offset(-1.8, -0.6),
-      collisionCount: 760,
-      totalAnalyzed: 50000,
+      collisionCount: 11,
+      totalAnalyzed: 142,
       riskLevel: "HIGH",
       peakHours: "19:30 – 23:00",
       primaryCause: "Mixed auto-rickshaw & delivery bike congestion",
       radiusMeters: 300,
       trend: "+8% this week",
-      dangerScore: 78
+      dangerScore: 72
     },
     {
       id: "hotspot_04",
       name: "South End Circle Bottleneck",
       location: offset(0.8, 2.1),
-      collisionCount: 540,
-      totalAnalyzed: 50000,
+      collisionCount: 8,
+      totalAnalyzed: 142,
       riskLevel: "MODERATE",
       peakHours: "13:30 – 16:00",
       primaryCause: "Sudden left-turn weave from flyover slip road",
       radiusMeters: 250,
       trend: "Stable",
-      dangerScore: 65
+      dangerScore: 60
     },
     {
       id: "hotspot_05",
       name: "Lalbagh West Gate Highway Feed",
       location: offset(2.3, 1.1),
-      collisionCount: 410,
-      totalAnalyzed: 50000,
+      collisionCount: 6,
+      totalAnalyzed: 142,
       riskLevel: "MODERATE",
       peakHours: "00:30 – 04:30",
       primaryCause: "Heavy intercity freight truck blind spots",
       radiusMeters: 400,
-      trend: "+12% late nights",
-      dangerScore: 58
+      trend: "+4% late nights",
+      dangerScore: 52
     }
   ];
 
-  // 2. License Plate AI / ANPR (Automatic Number Plate Recognition & Hit-and-Run Tracking)
+  // 2. Vehicle Scanner / ANPR (Automatic Number Plate Recognition & Hit-and-Run Tracking)
   const licensePlateDetections = [
     {
       id: "anpr_01",
@@ -273,27 +273,27 @@ export function generateSectorData(centerLat = 12.9352, centerLng = 77.5358) {
     isExecuted: false
   };
 
-  // 5. Clean, Simple False Cases Breakdown (Citywide Scale: 50,000 Alerts)
+  // 5. Clean, Simple False Cases Breakdown (Realistic Sector Data: 380 Total Alerts)
   const falseCaseStats = {
-    totalCitywideAlerts: 50000,
-    confirmedEmergenciesCount: 39450, // 78.9%
-    cancelledInBufferCount: 7400,      // 14.8%
-    fieldFalseAlarmsCount: 3150,       // 6.3%
-    hoursSavedByBuffer: "18,400 hours",
-    topAccidentalPocketDialSpot: "Sector 3 Bus Terminal (Pocket friction during bus boarding)"
+    totalCitywideAlerts: 380,
+    confirmedEmergenciesCount: 294, // 77.4%
+    cancelledInBufferCount: 68,     // 17.9%
+    fieldFalseAlarmsCount: 18,      // 4.7%
+    hoursSavedByBuffer: "142 hrs",
+    topAccidentalPocketDialSpot: "Sector 3 Bus Terminal (Pocket friction during boarding)"
   };
 
   return {
     sectorName: "Bengaluru South Emergency Command",
     centerCoords: { lat: centerLat, lng: centerLng },
     telemetry: {
-      totalAnalyzed: "50,000+",
+      totalAnalyzed: "142",
       activeSosCount: 3,
-      medianResponseTime: "03m 42s",
+      medianResponseTime: "04m 18s",
       ambulancesReadyCount: 4,
       totalAmbulancesCount: 6,
-      sectorStabilityScore: 94,
-      scannedPlatesCount: "50,000+"
+      sectorStabilityScore: 92,
+      scannedPlatesCount: "1,280"
     },
     accidentHotspots,
     licensePlateDetections,

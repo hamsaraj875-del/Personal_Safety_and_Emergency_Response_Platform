@@ -78,7 +78,7 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                 Jagrath Authority Command
               </h1>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-[#DE354C] border border-rose-100">
-                50,000+ DATASET
+                LIVE SECTOR RADAR
               </span>
             </div>
             <p className="text-xs text-slate-500 font-normal">
@@ -99,10 +99,10 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
             }`}
           >
             <AlertOctagon className="w-4 h-4 stroke-[2.2]" />
-            <span>Accidents (50K+)</span>
+            <span>Accidents</span>
           </button>
 
-          {/* Button 2: License Plate AI */}
+          {/* Button 2: Vehicle Scanner (License Plate AI) */}
           <button
             onClick={() => setActiveView('anpr')}
             className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
@@ -112,10 +112,10 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
             }`}
           >
             <ScanLine className="w-4 h-4 stroke-[2.2]" />
-            <span>License Plate AI</span>
+            <span>Vehicle Scanner</span>
           </button>
 
-          {/* Button 3: Fleet Rebalance */}
+          {/* Button 3: Ambulances */}
           <button
             onClick={() => setActiveView('fleet')}
             className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
@@ -125,7 +125,7 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
             }`}
           >
             <Ambulance className="w-4 h-4 stroke-[2.2]" />
-            <span>Fleet Rebalance</span>
+            <span>Ambulances</span>
           </button>
 
           {/* Button 4: False Cases */}
@@ -205,14 +205,14 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
             {/* Top Stat Ribbon */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-card">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Recorded Incidents</span>
-                <span className="text-3xl font-black text-slate-900 font-mono tracking-tight mt-1 block">50,000+</span>
-                <span className="text-xs font-medium text-emerald-600 mt-1 block">Analyzed across municipal sectors</span>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Sector Recorded Incidents</span>
+                <span className="text-3xl font-black text-slate-900 font-mono tracking-tight mt-1 block">142</span>
+                <span className="text-xs font-medium text-emerald-600 mt-1 block">Analyzed across sector checkpoints</span>
               </div>
               <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-card">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Top Critical Junction</span>
                 <span className="text-xl font-black text-[#EA3B52] truncate mt-1 block">Bull Temple Outer Ring</span>
-                <span className="text-xs font-medium text-slate-500 mt-1 block">1,420 crashes • 21:30–02:00 peak</span>
+                <span className="text-xs font-medium text-slate-500 mt-1 block">24 crashes • 21:30–02:00 peak</span>
               </div>
               <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-card">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Primary Crash Cause</span>
@@ -220,9 +220,9 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                 <span className="text-xs font-medium text-slate-500 mt-1 block">2-wheelers overtaking heavy freight</span>
               </div>
               <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-card">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Fatalities Reduced</span>
-                <span className="text-3xl font-black text-emerald-600 font-mono mt-1 block">-24.6%</span>
-                <span className="text-xs font-medium text-emerald-600 mt-1 block">Following Jagrath patrol staging</span>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Emergency Response Time</span>
+                <span className="text-3xl font-black text-emerald-600 font-mono mt-1 block">04m 18s</span>
+                <span className="text-xs font-medium text-emerald-600 mt-1 block">Following Jagrath rapid patrol staging</span>
               </div>
             </div>
 
@@ -236,7 +236,7 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                       Top 5 High-Collision Corridors
                     </h2>
                     <p className="text-xs text-slate-500">
-                      Ranked by historical crash frequency and severity from 50,000 incident reports
+                      Ranked by historical crash frequency and severity across sector radar
                     </p>
                   </div>
                   <span className="px-3 py-1 bg-rose-50 text-[#EA3B52] border border-rose-200 rounded-full text-xs font-bold">
@@ -331,19 +331,19 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
         )}
 
         {/* ========================================================================= */}
-        {/* PAGE 2: LICENSE PLATE AI (ANPR & HIT-AND-RUN VEHICLE SCANNER)             */}
+        {/* PAGE 2: VEHICLE SCANNER (ANPR & HIT-AND-RUN DETECTION)                    */}
         {/* ========================================================================= */}
         {activeView === 'anpr' && (
           <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
             {/* Top Stat Ribbon */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-card">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Plates Scanned Today</span>
-                <span className="text-3xl font-black text-slate-900 font-mono tracking-tight mt-1 block">50,000+</span>
-                <span className="text-xs font-medium text-emerald-600 mt-1 block">Live across 12 sector ANPR cameras</span>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Vehicles Scanned Today</span>
+                <span className="text-3xl font-black text-slate-900 font-mono tracking-tight mt-1 block">1,280</span>
+                <span className="text-xs font-medium text-emerald-600 mt-1 block">Live across sector ANPR cameras</span>
               </div>
               <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-card">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Hit & Run Suspects</span>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Hit & Run Alerts</span>
                 <span className="text-3xl font-black text-[#EA3B52] font-mono mt-1 block">1 Alert</span>
                 <span className="text-xs font-medium text-[#EA3B52] mt-1 block">Intercept broadcast in progress</span>
               </div>
@@ -353,7 +353,7 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                 <span className="text-xs font-medium text-amber-600 mt-1 block">Obstructing green corridor</span>
               </div>
               <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-card">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">AI OCR Accuracy</span>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">AI Plate Match Accuracy</span>
                 <span className="text-3xl font-black text-emerald-600 font-mono mt-1 block">99.4%</span>
                 <span className="text-xs font-medium text-emerald-600 mt-1 block">High-speed dual camera recognition</span>
               </div>
@@ -363,7 +363,7 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
             <div className="space-y-4">
               <div>
                 <h2 className="text-lg font-black text-slate-900">
-                  Real-Time License Plate AI Detections
+                  Real-Time Vehicle Scanner Detections
                 </h2>
                 <p className="text-xs text-slate-500">
                   Continuous high-speed optical recognition scanning all transit intersections
@@ -427,7 +427,7 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
         )}
 
         {/* ========================================================================= */}
-        {/* PAGE 3: FLEET AI & AMBULANCE REBALANCING (Zero Chaos, Clean Before/After) */}
+        {/* PAGE 3: AMBULANCES & SECTOR DISPATCH OPTIMIZATION                         */}
         {/* ========================================================================= */}
         {activeView === 'fleet' && (
           <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
@@ -436,7 +436,7 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
               <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                 <div>
                   <span className="text-xs font-bold uppercase tracking-wider text-[#EA3B52] bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200">
-                    AI Fleet Rebalance Optimization
+                    Ambulance Dispatch Optimization
                   </span>
                   <h2 className="text-2xl font-black text-slate-900 mt-2">
                     {sectorData.displacementPlan.actionTitle}
@@ -530,70 +530,168 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
         )}
 
         {/* ========================================================================= */}
-        {/* PAGE 4: FALSE CASES AUDIT (Executive, Clear Metrics, 50,000 Scale)       */}
+        {/* PAGE 4: FALSE CASES AUDIT (Clean, Simple, User-Friendly)                  */}
         {/* ========================================================================= */}
         {activeView === 'falseCases' && (
-          <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
-            {/* 3 Large Clean Metric Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="max-w-6xl mx-auto space-y-6 animate-fadeIn text-left">
+            {/* Header Description */}
+            <div className="pb-1">
+              <h2 className="text-xl font-black text-slate-900 tracking-tight">
+                False Alarm Prevention & Incident Audit
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Sector verification breakdown of {sectorData.falseCaseStats.totalCitywideAlerts} monthly emergency signals
+              </p>
+            </div>
+
+            {/* 3 Simple, Clean Metric Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Confirmed Real */}
-              <div className="p-6 bg-white rounded-3xl border border-slate-200/80 shadow-card text-center">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Confirmed Emergencies</span>
-                <span className="text-4xl font-black text-emerald-600 font-mono mt-2 block">
-                  39,450
-                </span>
-                <span className="text-xs font-bold text-slate-600 mt-1 block">78.9% of all city alerts</span>
-                <p className="text-[11px] text-slate-400 mt-2">Required active police, ambulance, or first-aid responder dispatch</p>
+              <div className="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Real Emergencies</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-3xl font-black text-slate-900 font-mono">
+                    {sectorData.falseCaseStats.confirmedEmergenciesCount}
+                  </span>
+                  <span className="text-xs font-bold text-emerald-600">77.4%</span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-2">
+                  Verified incidents requiring active ambulance, police, or trauma dispatch.
+                </p>
               </div>
 
               {/* 5-Sec Buffer Aborts */}
-              <div className="p-6 bg-white rounded-3xl border border-slate-200/80 shadow-card text-center">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Cancelled in 5s Buffer</span>
-                <span className="text-4xl font-black text-amber-600 font-mono mt-2 block">
-                  7,400
-                </span>
-                <span className="text-xs font-bold text-slate-600 mt-1 block">14.8% false alarm defense</span>
-                <p className="text-[11px] text-slate-400 mt-2">Pocket dials aborted locally before sirens or family alerts fired</p>
+              <div className="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Cancelled in 5s Buffer</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-3xl font-black text-slate-900 font-mono">
+                    {sectorData.falseCaseStats.cancelledInBufferCount}
+                  </span>
+                  <span className="text-xs font-bold text-amber-600">17.9%</span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-2">
+                  Pocket presses & accidental touches cancelled locally before sirens fired.
+                </p>
               </div>
 
               {/* Field False Alarms */}
-              <div className="p-6 bg-white rounded-3xl border border-slate-200/80 shadow-card text-center">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Field-Verified False</span>
-                <span className="text-4xl font-black text-slate-700 font-mono mt-2 block">
-                  3,150
-                </span>
-                <span className="text-xs font-bold text-slate-600 mt-1 block">6.3% resolved on arrival</span>
-                <p className="text-[11px] text-slate-400 mt-2">Investigated by responder on scene and marked as resolved safely</p>
+              <div className="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Field-Verified False</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-3xl font-black text-slate-900 font-mono">
+                    {sectorData.falseCaseStats.fieldFalseAlarmsCount}
+                  </span>
+                  <span className="text-xs font-bold text-slate-600">4.7%</span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-2">
+                  Responders arrived on-scene and confirmed the user was safe without triage needed.
+                </p>
               </div>
             </div>
 
             {/* Public Resource Savings Highlight */}
-            <div className="p-6 bg-emerald-50 border border-emerald-200 rounded-3xl flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-black text-emerald-900 flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  Public Services Saved by 5-Second Buffer
-                </h3>
-                <p className="text-xs text-emerald-800 mt-1 max-w-2xl leading-relaxed">
-                  By requiring a 2-second hold and a 5-second cancel countdown, Jagrath stopped <strong>7,400 accidental calls</strong> from wasting city emergency resources.
-                </p>
+            <div className="p-4 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-700">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-emerald-950">
+                    Emergency Resource Protection
+                  </h3>
+                  <p className="text-[11px] text-emerald-800 mt-0.5">
+                    The 5-second cancel window prevented {sectorData.falseCaseStats.cancelledInBufferCount} false sirens, saving an estimated {sectorData.falseCaseStats.hoursSavedByBuffer} of public responder time.
+                  </p>
+                </div>
               </div>
-              <span className="text-2xl font-black font-mono text-emerald-700 flex-shrink-0">
-                18,400 Hrs Saved
+              <span className="px-3 py-1 bg-white text-emerald-800 font-mono text-xs font-black rounded-lg border border-emerald-200 shadow-2xs whitespace-nowrap self-end sm:self-center">
+                {sectorData.falseCaseStats.hoursSavedByBuffer} Saved
               </span>
             </div>
 
-            {/* Repeat Accidental Trigger Zone Flag */}
-            <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-card">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                Vibration / Accidental Trigger Hotspot
-              </h4>
-              <p className="text-sm font-bold text-slate-900">
-                ⚠️ {sectorData.falseCaseStats.topAccidentalPocketDialSpot}
-              </p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                High passenger boarding friction frequently triggers pocket touches. AI sensor dampening applied to this transit stop.
-              </p>
+            {/* Simple, Clean Recent Incident Audit Log */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+              <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                  Recent Incident Verification Audits
+                </h4>
+                <span className="text-[11px] text-slate-400 font-medium">Last 24 Hours</span>
+              </div>
+
+              <div className="divide-y divide-slate-100 text-xs">
+                <div className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50/60 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <div>
+                      <span className="font-mono font-bold text-slate-800">INC-892401</span>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Near DVG Road Junction • Trauma Collision</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      Real Incident
+                    </span>
+                    <span className="text-[11px] text-slate-400 hidden sm:inline">Ambulance Dispatched</span>
+                  </div>
+                </div>
+
+                <div className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50/60 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    <div>
+                      <span className="font-mono font-bold text-slate-800">INC-892398</span>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Sector 3 Bus Terminal • Pocket Friction Touch</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                      Buffer Cancelled
+                    </span>
+                    <span className="text-[11px] text-slate-400 hidden sm:inline">Aborted within 3.8s</span>
+                  </div>
+                </div>
+
+                <div className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50/60 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    <div>
+                      <span className="font-mono font-bold text-slate-800">INC-892391</span>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Gandhi Bazaar Main Rd • Accidental Screen Tap</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                      Buffer Cancelled
+                    </span>
+                    <span className="text-[11px] text-slate-400 hidden sm:inline">PIN verified abort</span>
+                  </div>
+                </div>
+
+                <div className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50/60 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-slate-400" />
+                    <div>
+                      <span className="font-mono font-bold text-slate-800">INC-892385</span>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Ashok Nagar 2nd Block • Phone Dropped</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                      Field Resolved
+                    </span>
+                    <span className="text-[11px] text-slate-400 hidden sm:inline">Patrol verified safe</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}

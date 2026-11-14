@@ -1,14 +1,23 @@
 import React, { useState } from 'react';
-import { Shield, MapPin, Key, Navigation, ArrowRight, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Shield, MapPin, Key, Lock, Navigation, ArrowRight, ShieldCheck, CheckCircle2 } from 'lucide-react';
 
 export default function AuthorityLoginModal({ onAuthorizeLocation, onClose }) {
   const [badgeId, setBadgeId] = useState("BLR-OPS-892");
+  const [password, setPassword] = useState("••••••••");
   const [stage, setStage] = useState('badge'); // 'badge' | 'geo'
   const [isLocating, setIsLocating] = useState(false);
   const [geoError, setGeoError] = useState("");
 
   const handleBadgeSubmit = (e) => {
     e?.preventDefault();
+    if (!badgeId.trim()) {
+      alert("Please enter a valid Officer Badge ID.");
+      return;
+    }
+    if (!password.trim()) {
+      alert("Please enter your Station Password / PIN.");
+      return;
+    }
     setStage('geo');
   };
 
@@ -103,21 +112,30 @@ export default function AuthorityLoginModal({ onAuthorizeLocation, onClose }) {
                 </div>
               </div>
 
-              <div className="pt-2 flex flex-col gap-2">
+              <div>
+                <label className="text-[12px] font-medium text-slate-700 uppercase tracking-wider block mb-1">
+                  Officer Password / Station PIN
+                </label>
+                <div className="relative flex items-center">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter station access PIN"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-3 py-3 text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#EA3B52]"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2">
                 <button
                   type="submit"
                   className="w-full py-3.5 bg-[#EA3B52] hover:bg-[#d92d44] text-white font-bold rounded-2xl text-xs flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-98"
                 >
                   <span>Authenticate & Continue</span>
                   <ArrowRight className="w-4 h-4" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleBadgeSubmit}
-                  className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-2xl text-[11px] font-bold border border-slate-200 transition-colors"
-                >
-                  1-Click Demo Access (Bengaluru South)
                 </button>
               </div>
             </form>

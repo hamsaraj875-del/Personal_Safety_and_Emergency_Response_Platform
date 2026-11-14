@@ -468,33 +468,10 @@ export default function AuthorityMap({
         <div ref={leafletContainerRef} className="w-full h-full" />
       )}
 
-      {/* TOP LEFT: MAP ENGINE TOGGLE PILL */}
-      <div className="absolute top-4 left-4 z-[1000] flex items-center gap-1.5 bg-white/95 backdrop-blur-md px-2 py-1.5 rounded-full shadow-floating border border-slate-200 text-[11px] font-bold">
-        <button
-          onClick={() => setEngine('google')}
-          className={`px-3 py-1 rounded-full transition-all flex items-center gap-1.5 ${
-            engine === 'google'
-              ? 'bg-[#EA3B52] text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-          title="Google Maps Platform (Surrounding Location Satellite & Vector View)"
-        >
-          <span>🗺️ Google Maps</span>
-          {engine === 'google' && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
-        </button>
-
-        <button
-          onClick={() => setEngine('leaflet')}
-          className={`px-3 py-1 rounded-full transition-all flex items-center gap-1.5 ${
-            engine === 'leaflet'
-              ? 'bg-slate-900 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-          title="Light CartoDB Positron Vector Tiles"
-        >
-          <span>Vector Positron</span>
-          {engine === 'leaflet' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
-        </button>
+      {/* TOP LEFT: ACTIVE GOOGLE MAPS BADGE */}
+      <div className="absolute top-4 left-4 z-[1000] flex items-center gap-2 bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow-floating border border-slate-200 text-[11px] font-bold text-slate-800">
+        <span className="w-2 h-2 rounded-full bg-[#EA3B52] animate-pulse" />
+        <span>🗺️ Google Maps Live Surveillance</span>
       </div>
 
       {/* MAP LEGEND OVERLAY (BOTTOM LEFT) */}
