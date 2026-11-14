@@ -5,3 +5,7 @@ dist
 .env
 .env.*
 !.env.example
+build
+.next
+.gradle
+local.properties

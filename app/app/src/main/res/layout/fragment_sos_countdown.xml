@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_red_gradient"
+    android:padding="24dp">
+
+    <!-- Emergency Icon with Soft Glow Ring -->
+    <FrameLayout
+        android:id="@+id/icon_wrapper"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:layout_marginTop="60dp"
+        android:background="@drawable/bg_sos_ring_outer"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageView
+            android:id="@+id/iv_countdown_shield"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_gravity="center"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_shield"
+            app:tint="@color/white_surface" />
+    </FrameLayout>
+
+    <!-- Header Text -->
+    <TextView
+        android:id="@+id/tv_countdown_heading"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:fontFamily="@font/plus_jakarta_sans"
+        android:text="@string/sending_sos_in"
+        android:textColor="@color/white_surface"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/icon_wrapper" />
+
+    <!-- Huge Animated Countdown Number -->
+    <TextView
+        android:id="@+id/tv_countdown_number"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/plus_jakarta_sans"
+        android:text="5"
+        android:textColor="@color/white_surface"
+        android:textSize="110sp"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@id/btn_cancel_countdown"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tv_countdown_heading" />
+
+    <TextView
+        android:id="@+id/tv_countdown_note"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        android:fontFamily="@font/plus_jakarta_sans"
+        android:gravity="center"
+        android:text="Help request will be broadcast to your trusted network and nearest verified responders."
+        android:textColor="@color/soft_pink"
+        android:textSize="13sp"
+        app:layout_constraintBottom_toTopOf="@id/btn_cancel_countdown"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <!-- Cancel Button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_cancel_countdown"
+        style="@style/Widget.Jaagruth.Button.Cancel"
+        android:layout_width="0dp"
+        android:layout_height="@dimen/button_height"
+        android:layout_marginBottom="32dp"
+        android:text="@string/cancel_sos"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

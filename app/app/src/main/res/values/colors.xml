@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Jaagruth Brand Color Palette -->
+    <color name="primary_red">#EA3B52</color>
+    <color name="crimson">#E11D48</color>
+    <color name="dark_red">#BE123C</color>
+    <color name="deep_red">#9F1239</color>
+    <color name="light_rose">#FFE4E6</color>
+    <color name="soft_pink">#FFF1F2</color>
+    <color name="main_background">#FAFAFB</color>
+    <color name="white_surface">#FFFFFF</color>
+    <color name="heading">#0F172A</color>
+    <color name="secondary_text">#64748B</color>
+    <color name="disabled">#E9EAF0</color>
+    <color name="disabled_text">#94A3B8</color>
+    <color name="success">#2E9E6B</color>
+    <color name="success_light">#DCFCE7</color>
+    <color name="warning">#F5A524</color>
+    <color name="warning_light">#FEF3C7</color>
+    <color name="information">#3B82F6</color>
+    <color name="information_light">#DBEAFE</color>
+    <color name="siren_blue">#38BDF8</color>
+
+    <!-- Translucent Overlay / Shadow Colors -->
+    <color name="red_ring_inner">#40EA3B52</color>
+    <color name="red_ring_outer">#20EA3B52</color>
+    <color name="card_border">#E2E8F0</color>
+    <color name="divider_color">#F1F5F9</color>
+    <color name="black_overlay">#66000000</color>
+</resources>

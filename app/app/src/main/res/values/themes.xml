@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme using Material3 -->
+    <style name="Theme.Jaagruth" parent="Theme.Material3.Light.NoActionBar">
+        <!-- Primary brand colors -->
+        <item name="colorPrimary">@color/primary_red</item>
+        <item name="colorOnPrimary">@color/white_surface</item>
+        <item name="colorPrimaryContainer">@color/light_rose</item>
+        <item name="colorOnPrimaryContainer">@color/deep_red</item>
+
+        <!-- Secondary brand colors -->
+        <item name="colorSecondary">@color/crimson</item>
+        <item name="colorOnSecondary">@color/white_surface</item>
+        <item name="colorSecondaryContainer">@color/soft_pink</item>
+        <item name="colorOnSecondaryContainer">@color/dark_red</item>
+
+        <!-- Background & Surface -->
+        <item name="android:colorBackground">@color/main_background</item>
+        <item name="colorSurface">@color/white_surface</item>
+        <item name="colorOnSurface">@color/heading</item>
+        <item name="colorSurfaceVariant">@color/soft_pink</item>
+        <item name="colorOnSurfaceVariant">@color/secondary_text</item>
+
+        <!-- Status bar and Navigation bar -->
+        <item name="android:statusBarColor">@color/main_background</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@color/white_surface</item>
+        <item name="android:windowLightNavigationBar">true</item>
+
+        <!-- Default font family -->
+        <item name="fontFamily">@font/plus_jakarta_sans</item>
+    </style>
+
+    <!-- Specific theme for SOS countdown full-screen -->
+    <style name="Theme.Jaagruth.Emergency" parent="Theme.Jaagruth">
+        <item name="android:statusBarColor">@color/dark_red</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">@color/deep_red</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>
