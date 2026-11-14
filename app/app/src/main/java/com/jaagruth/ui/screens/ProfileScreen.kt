@@ -47,6 +47,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import coil.compose.rememberAsyncImagePainter
 import com.jaagruth.model.UserProfile
 import com.jaagruth.service.BenchmarkResult
@@ -86,7 +88,7 @@ fun ProfileScreen(
     fun handleRunSimulation() {
         if (isSimulating) return
         isSimulating = true
-        scope.launch(kotlinx.coroutines.Dispatchers.Default) {
+        scope.launch(Dispatchers.Default) {
             val result = SimulationRunner.runFullBenchmarkSimulation()
             simulationData = result
             isSimulating = false

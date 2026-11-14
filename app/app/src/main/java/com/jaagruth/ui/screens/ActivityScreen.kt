@@ -43,6 +43,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import com.jaagruth.crypto.CryptoLedger
 import com.jaagruth.model.IncidentBlock
 import com.jaagruth.model.VerificationResult
@@ -86,7 +88,7 @@ fun ActivityScreen(
                 isVerifying = false
             }
         } else {
-            scope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            scope.launch(Dispatchers.Default) {
                 val result = CryptoLedger.verifyChainIntegrity(chain)
                 verificationResult = result
                 isVerifying = false
