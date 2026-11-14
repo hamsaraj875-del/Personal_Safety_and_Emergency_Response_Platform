@@ -252,7 +252,8 @@ fun AmbulanceOnTheWayScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp)
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .clip(RoundedCornerShape(16.dp))
                     .background(Slate900)
             ) {
                 LiveEmergencyMapView(
@@ -261,7 +262,8 @@ fun AmbulanceOnTheWayScreen(
                     safetyHubs = safetyHubs,
                     routePoints = routePoints,
                     activeResponder = activeResponder,
-                    onSelectHub = { selectedHub = it }
+                    onSelectHub = { selectedHub = it },
+                    modifier = Modifier.fillMaxSize()
                 )
 
                 // Selected Hub Detailed Briefing Modal
