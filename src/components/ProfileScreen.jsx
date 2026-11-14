@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronRight, Key, Shield, Moon, MapPin, Play, LogOut, CheckCircle2, Sliders, Smartphone } from 'lucide-react';
+import { ChevronRight, Key, Shield, Moon, MapPin, Play, LogOut } from 'lucide-react';
 import { CURRENT_USER } from '../constants/initialData';
 import { runFullBenchmarkSimulation } from '../services/simulationRunner';
 import BottomNavBar from './BottomNavBar';
@@ -39,22 +39,24 @@ export default function ProfileScreen({
 
       {/* Main Settings List */}
       <div className="flex-1 overflow-y-auto no-scrollbar p-5 space-y-4">
-        {/* User Profile Card */}
-        <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-3.5">
-          <img
-            src={activeUser.avatar || CURRENT_USER.avatar}
-            alt={activeUser.name}
-            className="w-13 h-13 rounded-full object-cover border-2 border-slate-100 shadow-2xs"
-          />
+        {/* User Profile Card - Clean, Standard, Perfectly Sized */}
+        <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5">
+          <div className="w-14 h-14 min-w-[56px] min-h-[56px] rounded-full overflow-hidden border-2 border-slate-100 shadow-sm flex-shrink-0">
+            <img
+              src={activeUser.avatar || CURRENT_USER.avatar}
+              alt={activeUser.name || "User"}
+              className="w-full h-full object-cover"
+            />
+          </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-bold text-slate-900 truncate">
+            <h3 className="text-base font-bold text-slate-900 truncate leading-tight">
               {activeUser.name || "User"}
             </h3>
-            <p className="text-xs text-slate-500 font-medium truncate">
+            <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
               {activeUser.phone || "No phone linked"}
             </p>
-            <div className="flex items-center gap-1 mt-1 text-[11px] text-emerald-600 font-semibold">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <div className="inline-flex items-center gap-1.5 mt-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[11px] font-semibold border border-emerald-100">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span>Safety Protection Active</span>
             </div>
           </div>
@@ -65,11 +67,11 @@ export default function ProfileScreen({
           <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1 mb-1.5">
             Security PIN Codes
           </h4>
-          <div className="bg-white rounded-2xl border border-slate-200/80 divide-y divide-slate-100 shadow-2xs">
+          <div className="bg-white rounded-2xl border border-slate-200/80 divide-y divide-slate-100 shadow-sm">
             {/* Safe PIN */}
             <div className="p-3.5 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
                   <Key className="w-4 h-4" />
                 </div>
                 <div>
@@ -85,7 +87,7 @@ export default function ProfileScreen({
             {/* Duress PIN */}
             <div className="p-3.5 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
                   <Shield className="w-4 h-4" />
                 </div>
                 <div>
@@ -105,14 +107,14 @@ export default function ProfileScreen({
           <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1 mb-1.5">
             Safety Features
           </h4>
-          <div className="bg-white rounded-2xl border border-slate-200/80 divide-y divide-slate-100 shadow-2xs">
+          <div className="bg-white rounded-2xl border border-slate-200/80 divide-y divide-slate-100 shadow-sm">
             {/* Night Safe Walk */}
             <button
               onClick={onStartSafeWalk}
               className="w-full p-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors text-left"
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
                   <Moon className="w-4 h-4" />
                 </div>
                 <div>
@@ -131,7 +133,7 @@ export default function ProfileScreen({
                 </div>
                 <div className="min-w-0">
                   <h5 className="text-xs font-bold text-slate-800">Home Address</h5>
-                  <p className="text-[11px] text-slate-400 truncate">{activeUser.address}</p>
+                  <p className="text-[11px] text-slate-400 truncate">{activeUser.address || "No address saved"}</p>
                 </div>
               </div>
             </div>
@@ -143,7 +145,7 @@ export default function ProfileScreen({
           <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1 mb-1.5">
             System Diagnostics
           </h4>
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-2xs">
+          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
                 <h5 className="text-xs font-bold text-slate-800">Benchmark Simulation</h5>
@@ -152,7 +154,7 @@ export default function ProfileScreen({
               <button
                 onClick={handleRunSimulation}
                 disabled={isSimulating}
-                className="px-3 py-1.5 bg-[#EA3B52] hover:bg-[#d92d44] text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs active:scale-95 transition-all"
+                className="px-3 py-1.5 bg-[#EA3B52] hover:bg-[#d92d44] text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm active:scale-95 transition-all"
               >
                 <Play className={`w-3 h-3 ${isSimulating ? 'animate-spin' : ''}`} />
                 <span>{isSimulating ? 'Testing...' : 'Run Test'}</span>
@@ -186,7 +188,7 @@ export default function ProfileScreen({
         <div className="pt-1">
           <button
             onClick={onLogout}
-            className="w-full py-3 bg-white hover:bg-rose-50 text-rose-600 border border-slate-200 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-colors active:scale-98 shadow-2xs"
+            className="w-full py-3 bg-white hover:bg-rose-50 text-rose-600 border border-slate-200 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition-colors active:scale-98 shadow-sm"
           >
             <LogOut className="w-4 h-4" />
             <span>Log Out / Switch Account</span>
