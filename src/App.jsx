@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import MobileFrame from './components/MobileFrame';
+import SplashLanding from './components/SplashLanding';
+import IntroBrief from './components/IntroBrief';
+import LoginScreen from './components/LoginScreen';
 import HomeScreen from './components/HomeScreen';
+import ActivityScreen from './components/ActivityScreen';
+import ContactsScreen from './components/ContactsScreen';
+import ProfileScreen from './components/ProfileScreen';
 import AmbulanceOnTheWayScreen from './components/AmbulanceOnTheWayScreen';
 import MapTrackingView from './components/MapTrackingView';
 import CancelWindowModal from './components/CancelWindowModal';
 import SafetyPinModal from './components/SafetyPinModal';
-import AuditTimelineModal from './components/AuditTimelineModal';
-import RespondersModal from './components/RespondersModal';
-import AdminSettingsModal from './components/AdminSettingsModal';
 import InstructionModal from './components/InstructionModal';
 
 import { CURRENT_USER, VERIFIED_RESPONDERS, TRUSTED_CONTACTS, MAP_CONFIG } from './constants/initialData';
@@ -16,16 +19,22 @@ import { rankResponders } from './services/responderMatcher';
 import { runAITriage } from './services/aiTriage';
 
 export default function App() {
-  // Mobile Screen Navigation: 'home' | 'dispatched' | 'map'
-  const [screen, setScreen] = useState('home');
+  // Linear Flow: 'splash' -> 'intro' -> 'login' -> 'main'
+  const [appStage, setAppStage] = useState('splash');
 
-  // Modals (all redesigned with clean white theme & simple language)
+  // Full Screen Navigation in 'main': tabs ('home' | 'activity' | 'contacts' | 'profile')
+  const [activeTab, setActiveTab] = useState('home');
+
+  // Emergency States: 'idle' | 'dispatched' | 'map'
+  const [emergencyScreen, setEmergencyScreen] = useState('idle');
+
+  // Modals
   const [showCancelWindow, setShowCancelWindow] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
-  const [showAuditModal, setShowAuditModal] = useState(false);
-  const [showRespondersModal, setShowRespondersModal] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showInstructionModal, setShowInstructionModal] = useState(false);
+
+  // User Profile
+  const [userProfile, setUserProfile] = useState(CURRENT_USER);
 
   // Active Incident State
   const [incidentId, setIncidentId] = useState(null);
@@ -56,7 +65,7 @@ export default function App() {
         actorRole: "system",
         eventType: "PLATFORM_INIT",
         payload: {
-          platform: "RakshaChain",
+          platform: "Jagrat Safety Network",
           device: "Citizen Mobile Node",
           status: "PROTECTED_READY"
         }
@@ -70,7 +79,7 @@ export default function App() {
   // Timer for elapsed incident duration
   useEffect(() => {
     let interval = null;
-    if (screen === 'dispatched' || screen === 'map') {
+    if (emergencyScreen === 'dispatched' || emergencyScreen === 'map') {
       interval = setInterval(() => {
         setElapsedSeconds(prev => prev + 1);
       }, 1000);
@@ -78,7 +87,7 @@ export default function App() {
       setElapsedSeconds(0);
     }
     return () => clearInterval(interval);
-  }, [screen]);
+  }, [emergencyScreen]);
 
   // Append new event block to hash chain
   const appendAuditBlock = async (eventType, actorRole, actorId, payload) => {
@@ -107,6 +116,18 @@ export default function App() {
     });
   };
 
+  // Login handler
+  const handleLoginSuccess = (formData) => {
+    setUserProfile(prev => ({
+      ...prev,
+      name: formData.name,
+      address: formData.address,
+      phone: formData.phone
+    }));
+    setAppStage('main');
+    showToast(`Welcome, ${formData.name}! Your emergency network is active.`);
+  };
+
   // Step 1: User triggers SOS -> 5s cancel window begins
   const handleTriggerSOS = () => {
     setShowCancelWindow(true);
@@ -118,19 +139,19 @@ export default function App() {
     await appendAuditBlock(
       "FALSE_ALARM",
       "citizen",
-      CURRENT_USER.id,
-      { reason: "Cancelled in buffer window", address: CURRENT_USER.address }
+      userProfile.id || CURRENT_USER.id,
+      { reason: "Cancelled in buffer window", address: userProfile.address }
     );
     showToast("Alert cancelled. No contacts alerted.");
   };
 
-  // Step 3: Emergency confirmed (or instant bypass)
+  // Step 3: Emergency confirmed
   const handleConfirmDispatch = async (noteText) => {
     setShowCancelWindow(false);
     const newIncId = `INC-${Date.now().toString().slice(-6)}`;
     setIncidentId(newIncId);
     setEscalationStep(1);
-    setScreen('dispatched'); // Transition to Screen 2 in screenshot
+    setEmergencyScreen('dispatched'); // Transition to Screen 2 in screenshot
 
     // AI triage & responder matching
     const triageResult = await runAITriage(noteText || "general distress");
@@ -146,7 +167,7 @@ export default function App() {
     await appendAuditBlock(
       "TRIGGERED",
       "citizen",
-      CURRENT_USER.id,
+      userProfile.id || CURRENT_USER.id,
       {
         incidentId: newIncId,
         coords: MAP_CONFIG.userPos,
@@ -229,7 +250,7 @@ export default function App() {
     await appendAuditBlock(
       "RESOLVED_SAFE",
       "citizen",
-      CURRENT_USER.id,
+      userProfile.id || CURRENT_USER.id,
       {
         incidentId,
         verificationMethod: "SAFETY_PIN_VERIFIED",
@@ -237,19 +258,21 @@ export default function App() {
       }
     );
 
-    setScreen('home');
+    setEmergencyScreen('idle');
+    setActiveTab('home');
     setEscalationStep(0);
     showToast("Incident confirmed safe and resolved.");
   };
 
   const handleResolveDuress = async () => {
     setShowPinModal(false);
-    setScreen('home');
+    setEmergencyScreen('idle');
+    setActiveTab('home');
 
     await appendAuditBlock(
       "DURESS_ESCALATION",
       "citizen",
-      CURRENT_USER.id,
+      userProfile.id || CURRENT_USER.id,
       {
         incidentId,
         duressCodeUsed: true,
@@ -290,7 +313,7 @@ export default function App() {
     await appendAuditBlock(
       "112_ERSS_HANDOFF",
       "citizen",
-      CURRENT_USER.id,
+      userProfile.id || CURRENT_USER.id,
       {
         incidentId,
         dialedNumber: "112",
@@ -302,38 +325,38 @@ export default function App() {
 
   return (
     <div className="w-full min-h-screen bg-[#F1F5F9] flex flex-col items-center justify-center p-3 sm:p-6 font-sans antialiased select-none">
-      {/* Clean Demo Screen Switcher Bar (Light, Minimal, Non-Intrusive) */}
-      <div className="w-full max-w-[390px] mb-3 flex items-center justify-between px-3 py-1.5 bg-white/90 backdrop-blur-md rounded-2xl shadow-sm border border-slate-200 text-xs">
+      {/* Top Demo Helper Bar */}
+      <div className="w-full max-w-[390px] mb-3 flex items-center justify-between px-3.5 py-1.5 bg-white/90 backdrop-blur-md rounded-2xl shadow-sm border border-slate-200 text-xs">
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-[#EA3B52] animate-pulse" />
-          <span className="font-bold text-slate-800 text-[11px]">RakshaChain</span>
+          <span className="font-bold text-slate-800 text-[11px]">Jagrat Platform</span>
         </div>
 
-        {/* 3 Screen Navigation Pills */}
-        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl">
+        {/* Quick jump for testing */}
+        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl text-[10px] font-bold">
           <button
-            onClick={() => setScreen('home')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-              screen === 'home' ? 'bg-[#EA3B52] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            onClick={() => { setAppStage('splash'); setEmergencyScreen('idle'); }}
+            className={`px-2 py-0.5 rounded-lg transition-all ${
+              appStage === 'splash' ? 'bg-[#EA3B52] text-white' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Home
+            Splash
           </button>
           <button
-            onClick={() => setScreen('dispatched')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-              screen === 'dispatched' ? 'bg-[#EA3B52] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            onClick={() => { setAppStage('login'); setEmergencyScreen('idle'); }}
+            className={`px-2 py-0.5 rounded-lg transition-all ${
+              appStage === 'login' ? 'bg-[#EA3B52] text-white' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Dispatched
+            Login
           </button>
           <button
-            onClick={() => setScreen('map')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-              screen === 'map' ? 'bg-[#EA3B52] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            onClick={() => { setAppStage('main'); setEmergencyScreen('idle'); }}
+            className={`px-2 py-0.5 rounded-lg transition-all ${
+              appStage === 'main' && emergencyScreen === 'idle' ? 'bg-[#EA3B52] text-white' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Live Map
+            App
           </button>
         </div>
       </div>
@@ -346,95 +369,125 @@ export default function App() {
         </div>
       )}
 
-      {/* The Exact Mobile Frame Matching the Screenshot */}
-      <MobileFrame isDarkBar={screen === 'dispatched'}>
-        {/* Screen 1: Home View (Center in Screenshot) */}
-        {screen === 'home' && (
-          <HomeScreen
-            onTriggerSOS={handleTriggerSOS}
-            onOpenAudit={() => setShowAuditModal(true)}
-            onOpenResponders={() => setShowRespondersModal(true)}
-            onOpenSettings={() => setShowSettingsModal(true)}
-            activeTab="home"
-          />
+      {/* Mobile Viewport Frame */}
+      <MobileFrame isDarkBar={appStage === 'splash' || appStage === 'intro' || emergencyScreen === 'dispatched'}>
+        {/* Stage 1: Letter-by-Letter Animated Splash Page */}
+        {appStage === 'splash' && (
+          <SplashLanding onComplete={() => setAppStage('intro')} />
         )}
 
-        {/* Screen 2: Ambulance on a Way (Left in Screenshot) */}
-        {screen === 'dispatched' && (
-          <AmbulanceOnTheWayScreen
-            onBack={() => setScreen('home')}
-            onSeeMap={() => setScreen('map')}
-            onCancelRequest={() => setShowPinModal(true)}
-            escalationStep={escalationStep || 3}
-            elapsedSeconds={elapsedSeconds || 42}
-          />
+        {/* Stage 2: Brief 1-2s Intro Mission Card */}
+        {appStage === 'intro' && (
+          <IntroBrief onComplete={() => setAppStage('login')} />
         )}
 
-        {/* Screen 3: Live Map Tracking (Right in Screenshot) */}
-        {screen === 'map' && (
-          <MapTrackingView
-            onBack={() => setScreen('dispatched')}
-            onOpenInstruction={() => setShowInstructionModal(true)}
-            currentResponder={activeResponder}
-            onCall={(resp) => alert(`Calling ${resp.name} (${resp.phone})...`)}
-            onMessage={(resp) => alert(`Opening secure messaging with ${resp.name}...`)}
-          />
+        {/* Stage 3: Login Page */}
+        {appStage === 'login' && (
+          <LoginScreen onLoginSuccess={handleLoginSuccess} />
         )}
 
-        {/* Clean Light Modals */}
-        {showCancelWindow && (
-          <CancelWindowModal
-            onConfirmDispatch={handleConfirmDispatch}
-            onAbort={handleAbortCancelWindow}
-            initialSeconds={5}
-          />
-        )}
+        {/* Stage 4: Main Application & Emergency Modes */}
+        {appStage === 'main' && (
+          <>
+            {/* If Emergency Dispatched (Left Screen in Screenshot) */}
+            {emergencyScreen === 'dispatched' && (
+              <AmbulanceOnTheWayScreen
+                onBack={() => setEmergencyScreen('idle')}
+                onSeeMap={() => setEmergencyScreen('map')}
+                onCancelRequest={() => setShowPinModal(true)}
+                escalationStep={escalationStep || 3}
+                elapsedSeconds={elapsedSeconds || 42}
+              />
+            )}
 
-        {showPinModal && (
-          <SafetyPinModal
-            onResolveNormal={handleResolveNormal}
-            onResolveDuress={handleResolveDuress}
-            onClose={() => setShowPinModal(false)}
-          />
-        )}
+            {/* If Emergency Map Tracking (Right Screen in Screenshot) */}
+            {emergencyScreen === 'map' && (
+              <MapTrackingView
+                onBack={() => setEmergencyScreen('dispatched')}
+                onOpenInstruction={() => setShowInstructionModal(true)}
+                currentResponder={activeResponder}
+                onCall={(resp) => alert(`Calling ${resp.name} (${resp.phone})...`)}
+                onMessage={(resp) => alert(`Opening secure messaging with ${resp.name}...`)}
+              />
+            )}
 
-        {showAuditModal && (
-          <AuditTimelineModal
-            chain={hashChain}
-            onClose={() => setShowAuditModal(false)}
-            onTamperBlock={handleTamperBlock}
-            onRestoreChain={handleRestoreChain}
-            isTampered={isChainTampered}
-          />
-        )}
+            {/* If Normal Idle State: Switch between 4 Full Screen Native Interfaces */}
+            {emergencyScreen === 'idle' && (
+              <>
+                {/* Tab 1: Home (Center Screen in Screenshot) */}
+                {activeTab === 'home' && (
+                  <HomeScreen
+                    onTriggerSOS={handleTriggerSOS}
+                    activeTab={activeTab}
+                    onSelectTab={(t) => setActiveTab(t)}
+                    userProfile={userProfile}
+                  />
+                )}
 
-        {showRespondersModal && (
-          <RespondersModal
-            responders={responders}
-            onClose={() => setShowRespondersModal(false)}
-            onSelectResponder={(resp) => {
-              setActiveResponder(resp);
-              setShowRespondersModal(false);
-              showToast(`Selected ${resp.name} as preferred helper.`);
-            }}
-            selectedResponderId={activeResponder?.id}
-          />
-        )}
+                {/* Tab 2: Activity & Safety Record (Full Screen) */}
+                {activeTab === 'activity' && (
+                  <ActivityScreen
+                    chain={hashChain}
+                    onTamperBlock={handleTamperBlock}
+                    onRestoreChain={handleRestoreChain}
+                    isTampered={isChainTampered}
+                    activeTab={activeTab}
+                    onSelectTab={(t) => setActiveTab(t)}
+                  />
+                )}
 
-        {showSettingsModal && (
-          <AdminSettingsModal
-            onClose={() => setShowSettingsModal(false)}
-            onStartSafeWalk={() => {
-              showToast("Night Safe Walk activated. We are monitoring your commute.");
-            }}
-          />
-        )}
+                {/* Tab 3: Contacts & Helpers (Full Screen) */}
+                {activeTab === 'contacts' && (
+                  <ContactsScreen
+                    responders={responders}
+                    selectedResponderId={activeResponder?.id}
+                    onSelectResponder={(resp) => {
+                      setActiveResponder(resp);
+                      showToast(`Selected ${resp.name} as primary helper.`);
+                    }}
+                    activeTab={activeTab}
+                    onSelectTab={(t) => setActiveTab(t)}
+                  />
+                )}
 
-        {showInstructionModal && (
-          <InstructionModal
-            onClose={() => setShowInstructionModal(false)}
-            onDial112={handleDial112}
-          />
+                {/* Tab 4: Safety Profile & Settings (Full Screen) */}
+                {activeTab === 'profile' && (
+                  <ProfileScreen
+                    activeTab={activeTab}
+                    onSelectTab={(t) => setActiveTab(t)}
+                    onStartSafeWalk={() => {
+                      showToast("Night Safe Walk activated. Your commute is now being protected.");
+                    }}
+                    userProfile={userProfile}
+                  />
+                )}
+              </>
+            )}
+
+            {/* Emergency Modals */}
+            {showCancelWindow && (
+              <CancelWindowModal
+                onConfirmDispatch={handleConfirmDispatch}
+                onAbort={handleAbortCancelWindow}
+                initialSeconds={5}
+              />
+            )}
+
+            {showPinModal && (
+              <SafetyPinModal
+                onResolveNormal={handleResolveNormal}
+                onResolveDuress={handleResolveDuress}
+                onClose={() => setShowPinModal(false)}
+              />
+            )}
+
+            {showInstructionModal && (
+              <InstructionModal
+                onClose={() => setShowInstructionModal(false)}
+                onDial112={handleDial112}
+              />
+            )}
+          </>
         )}
       </MobileFrame>
     </div>

@@ -1,19 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Home, FileText, Users, Sliders, MapPin } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { CURRENT_USER } from '../constants/initialData';
+import BottomNavBar from './BottomNavBar';
 
 export default function HomeScreen({
   onTriggerSOS,
-  onOpenAudit,
-  onOpenResponders,
-  onOpenSettings,
-  activeTab = 'home'
+  activeTab,
+  onSelectTab,
+  userProfile
 }) {
   const [isHolding, setIsHolding] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0); // 0 to 100
   const holdIntervalRef = useRef(null);
 
-  // 2-second hold-to-activate logic (prevents pocket dials as per UX blueprint)
+  const activeUser = userProfile || CURRENT_USER;
+
+  // 2-second hold-to-activate logic (prevents pocket dials)
   const startHold = () => {
     setIsHolding(true);
     setHoldProgress(0);
@@ -38,7 +40,7 @@ export default function HomeScreen({
     if (holdIntervalRef.current) {
       clearInterval(holdIntervalRef.current);
     }
-    // If tapped or released quickly, still trigger the 5s cancel window for emergency access
+    // If tapped or released quickly, still trigger the 5s cancel window
     if (holdProgress > 15 && holdProgress < 100) {
       onTriggerSOS && onTriggerSOS();
     }
@@ -62,15 +64,15 @@ export default function HomeScreen({
               Welcome back,
             </p>
             <h2 className="text-[18px] font-bold text-slate-900 tracking-tight">
-              {CURRENT_USER.name}
+              {activeUser.name}
             </h2>
           </div>
 
           {/* User Avatar with Red Badge '2' */}
           <div className="relative">
             <img
-              src={CURRENT_USER.avatar}
-              alt={CURRENT_USER.name}
+              src={activeUser.avatar || CURRENT_USER.avatar}
+              alt={activeUser.name}
               className="w-11 h-11 rounded-full object-cover border-2 border-slate-100 shadow-sm"
             />
             <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#EA3B52] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-sm">
@@ -148,7 +150,7 @@ export default function HomeScreen({
         {/* Floating Address Card matching screenshot */}
         <div className="w-full max-w-[325px] bg-white rounded-2xl p-3.5 shadow-card border border-slate-100 flex items-center gap-3">
           <img
-            src={CURRENT_USER.avatar}
+            src={activeUser.avatar || CURRENT_USER.avatar}
             alt="Current location"
             className="w-10 h-10 rounded-full object-cover border border-slate-200 flex-shrink-0"
           />
@@ -160,59 +162,14 @@ export default function HomeScreen({
               </h4>
             </div>
             <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
-              {CURRENT_USER.address}
+              {activeUser.address}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Floating Bottom Navigation Bar matching screenshot */}
-      <div className="px-6 pb-6 pt-2">
-        <div className="w-full max-w-[325px] mx-auto bg-white rounded-full py-2 px-3 shadow-floating border border-slate-100 flex items-center justify-between">
-          {/* Tab 1: Home (Active red pill container) */}
-          <button
-            onClick={() => {}}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-full font-bold text-[12px] transition-all ${
-              activeTab === 'home'
-                ? 'bg-[#EA3B52] text-white shadow-sm'
-                : 'text-slate-400 hover:text-slate-600'
-            }`}
-          >
-            <Home className="w-4 h-4 fill-current stroke-none" />
-            <span>Home</span>
-          </button>
-
-          {/* Tab 2: Activity Log */}
-          <button
-            onClick={onOpenAudit}
-            className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-full transition-colors"
-            title="Activity & Safety Log"
-            aria-label="Activity Log"
-          >
-            <FileText className="w-5 h-5 stroke-[1.8]" />
-          </button>
-
-          {/* Tab 3: Contacts & Helpers */}
-          <button
-            onClick={onOpenResponders}
-            className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-full transition-colors"
-            title="Trusted Contacts & Helpers"
-            aria-label="Contacts & Helpers"
-          >
-            <Users className="w-5 h-5 stroke-[1.8]" />
-          </button>
-
-          {/* Tab 4: Safety Settings */}
-          <button
-            onClick={onOpenSettings}
-            className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-full transition-colors"
-            title="Safety Settings"
-            aria-label="Safety Settings"
-          >
-            <Sliders className="w-5 h-5 stroke-[1.8]" />
-          </button>
-        </div>
-      </div>
+      {/* Persistent Bottom Navigation Bar */}
+      <BottomNavBar activeTab={activeTab} onSelectTab={onSelectTab} />
     </div>
   );
 }
