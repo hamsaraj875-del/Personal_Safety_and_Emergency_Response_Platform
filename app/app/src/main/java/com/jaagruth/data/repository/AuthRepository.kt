@@ -144,6 +144,10 @@ class AuthRepository(private val context: Context) {
         saveUser(MockDataSource.defaultUser)
     }
 
+    fun updateUser(user: User) {
+        saveUser(user)
+    }
+
     fun setDemoMode(isDemo: Boolean) {
         _isDemoMode.value = isDemo
         prefs.edit().putBoolean(KEY_DEMO_MODE, isDemo).apply()

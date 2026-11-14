@@ -30,13 +30,7 @@ jobs:
         run: |
           sed -i 's/\r$//' gradlew
           chmod +x gradlew
-          if ! ./gradlew assembleDebug --no-daemon; then
-            echo "### Gradle Build Error" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            ./gradlew compileDebugKotlin 2>&1 | grep -A 2 -B 1 "e: " | head -n 40 >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload Jaagrath Debug APK Artifact
         uses: actions/upload-artifact@v4
