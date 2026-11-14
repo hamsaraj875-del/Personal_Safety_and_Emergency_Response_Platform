@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App Details -->
+    <string name="app_name">Jaagruth</string>
+    <string name="tagline">Your Safety, Our Priority</string>
+
+    <!-- Navigation Tabs -->
+    <string name="nav_home">Home</string>
+    <string name="nav_contacts">Contacts</string>
+    <string name="nav_history">History</string>
+    <string name="nav_profile">Profile</string>
+
+    <!-- Home Screen -->
+    <string name="welcome_greeting">Welcome back, %1$s</string>
+    <string name="welcome_default">Welcome back, Manoj</string>
+    <string name="emergency_question">Are you in an emergency?</string>
+    <string name="emergency_subheading">Press the button below. Help will reach you soon.</string>
+    <string name="sos">SOS</string>
+    <string name="current_location_label">Your current location</string>
+    <string name="gps_active">GPS Active</string>
+    <string name="gps_fallback">Fallback Coordinates (Bengaluru)</string>
+    <string name="refresh_location">Refresh</string>
+    <string name="trusted_contacts_header">Trusted Contacts</string>
+    <string name="manage_contacts">Manage</string>
+    <string name="contacts_saved_count">%1$d contacts configured</string>
+
+    <!-- SOS Countdown -->
+    <string name="sending_sos_in">Sending SOS in…</string>
+    <string name="cancel_sos">Cancel</string>
+
+    <!-- Active Incident -->
+    <string name="incident_id_label">Incident: #%1$s</string>
+    <string name="status_alerting_contacts">Alerting your contacts</string>
+    <string name="status_contact_notified">Contact notified</string>
+    <string name="status_responder_assigned">Responder assigned</string>
+    <string name="status_help_en_route">Help is on the way</string>
+    <string name="status_on_scene">On scene</string>
+    <string name="status_resolved">Resolved</string>
+    <string name="status_false_alarm">False alarm</string>
+
+    <string name="next_escalation_in">Next escalation in %1$s</string>
+    <string name="escalation_ladder_title">Escalation Ladder</string>
+    <string name="escalation_step_1">Contact 1</string>
+    <string name="escalation_step_2">Contact 2</string>
+    <string name="escalation_step_3">Nearest responder</string>
+    <string name="escalation_step_4">Admin</string>
+    <string name="escalation_step_5">Call 112</string>
+
+    <string name="btn_see_map">See responders on map</string>
+    <string name="btn_call_112">Call 112</string>
+    <string name="btn_im_safe">I am safe / Cancel request</string>
+
+    <string name="location_sharing_on">Location sharing: ON</string>
+    <string name="location_sharing_stops_note">Location sharing stops when the incident ends.</string>
+
+    <!-- Tracking -->
+    <string name="tracking_title">Live Responder Tracking</string>
+    <string name="you_are_here">You are here</string>
+    <string name="responder_label">1st Responder</string>
+    <string name="responder_distance_eta">%1$s away • %2$s ETA</string>
+    <string name="btn_call_responder">Call Responder</string>
+    <string name="btn_message_responder">Message</string>
+
+    <!-- Contacts Management -->
+    <string name="contacts_title">Trusted Contacts</string>
+    <string name="add_contact">Add Contact</string>
+    <string name="contact_name_hint">Full name</string>
+    <string name="contact_phone_hint">Phone number</string>
+    <string name="contact_relationship_hint">Relationship (e.g. Sister, Friend)</string>
+    <string name="contact_consent_text">This person agrees to be my emergency contact.</string>
+    <string name="max_contacts_reached">Maximum 5 contacts allowed</string>
+
+    <!-- Incident History -->
+    <string name="history_title">Incident History</string>
+    <string name="verify_record">Verify record</string>
+    <string name="record_intact">Record intact</string>
+
+    <!-- Profile & Settings -->
+    <string name="profile_title">Profile &amp; Settings</string>
+    <string name="demo_mode_switch">Developer Demo Mode</string>
+    <string name="simulate_offline_switch">Simulate Offline Mode</string>
+    <string name="escalation_speed">Escalation Speed</string>
+    <string name="speed_fast">Fast (10s)</string>
+    <string name="speed_normal">Normal (60s)</string>
+    <string name="privacy_title">Privacy &amp; Data Security</string>
+    <string name="privacy_desc">Location is shared only during active incidents and stops automatically when resolved. No background tracking occurs outside emergencies.</string>
+    <string name="about_app">About Jaagruth</string>
+    <string name="privacy_policy">Privacy Policy</string>
+    <string name="terms_conditions">Terms &amp; Conditions</string>
+    <string name="logout">Log Out</string>
+
+    <!-- Auth -->
+    <string name="login_title">Welcome to Jaagruth</string>
+    <string name="login_subtitle">Sign in to coordinate your personal emergency network.</string>
+    <string name="email_or_phone_hint">Email or Phone Number</string>
+    <string name="password_hint">Password</string>
+    <string name="confirm_password_hint">Confirm Password</string>
+    <string name="full_name_hint">Full Name</string>
+    <string name="login_btn">Sign In</string>
+    <string name="register_btn">Create Account</string>
+    <string name="dont_have_account">Don\'t have an account? Register</string>
+    <string name="already_have_account">Already have an account? Sign In</string>
+    <string name="forgot_password">Forgot password?</string>
+    <string name="auth_consent_note">Your location is shared only during an active incident.</string>
+
+    <!-- Offline Banner -->
+    <string name="offline_banner_text">Offline Mode Active • SMS &amp; Local Fallback Enabled</string>
+    <string name="offline_sync_toast">Back online. Syncing locally stored events…</string>
+
+    <!-- Demo Controls -->
+    <string name="demo_panel_title">Developer Demo Controls</string>
+    <string name="demo_contact_ack">Contact acknowledges</string>
+    <string name="demo_responder_accept">Responder accepts</string>
+    <string name="demo_responder_arrived">Simulate responder arrival</string>
+    <string name="demo_mark_resolved">Mark resolved</string>
+    <string name="demo_reset_incident">Reset demo incident</string>
+</resources>

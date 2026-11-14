@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/splashFragment">
+
+    <fragment
+        android:id="@+id/splashFragment"
+        android:name="com.jaagruth.ui.splash.SplashFragment"
+        android:label="SplashFragment"
+        tools:layout="@layout/fragment_splash">
+        <action
+            android:id="@+id/action_splash_to_home"
+            app:destination="@id/navigation_home"
+            app:popUpTo="@id/splashFragment"
+            app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_splash_to_login"
+            app:destination="@id/loginFragment"
+            app:popUpTo="@id/splashFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/loginFragment"
+        android:name="com.jaagruth.ui.auth.LoginFragment"
+        android:label="LoginFragment"
+        tools:layout="@layout/fragment_login">
+        <action
+            android:id="@+id/action_login_to_home"
+            app:destination="@id/navigation_home"
+            app:popUpTo="@id/loginFragment"
+            app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/action_login_to_register"
+            app:destination="@id/registerFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/registerFragment"
+        android:name="com.jaagruth.ui.auth.RegisterFragment"
+        android:label="RegisterFragment"
+        tools:layout="@layout/fragment_register">
+        <action
+            android:id="@+id/action_register_to_home"
+            app:destination="@id/navigation_home"
+            app:popUpTo="@id/loginFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/navigation_home"
+        android:name="com.jaagruth.ui.home.HomeFragment"
+        android:label="HomeFragment"
+        tools:layout="@layout/fragment_home">
+        <action
+            android:id="@+id/action_home_to_countdown"
+            app:destination="@id/sosCountdownFragment" />
+        <action
+            android:id="@+id/action_home_to_active_incident"
+            app:destination="@id/activeIncidentFragment" />
+        <action
+            android:id="@+id/action_home_to_contacts"
+            app:destination="@id/navigation_contacts" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/sosCountdownFragment"
+        android:name="com.jaagruth.ui.incident.SosCountdownFragment"
+        android:label="SosCountdownFragment"
+        tools:layout="@layout/fragment_sos_countdown">
+        <action
+            android:id="@+id/action_countdown_to_active_incident"
+            app:destination="@id/activeIncidentFragment"
+            app:popUpTo="@id/navigation_home"
+            app:popUpToInclusive="false" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/activeIncidentFragment"
+        android:name="com.jaagruth.ui.incident.ActiveIncidentFragment"
+        android:label="ActiveIncidentFragment"
+        tools:layout="@layout/fragment_active_incident">
+        <action
+            android:id="@+id/action_active_incident_to_tracking"
+            app:destination="@id/liveTrackingFragment" />
+        <action
+            android:id="@+id/action_active_incident_to_home"
+            app:destination="@id/navigation_home"
+            app:popUpTo="@id/navigation_home"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/liveTrackingFragment"
+        android:name="com.jaagruth.ui.tracking.LiveTrackingFragment"
+        android:label="LiveTrackingFragment"
+        tools:layout="@layout/fragment_live_tracking" />
+
+    <fragment
+        android:id="@+id/navigation_contacts"
+        android:name="com.jaagruth.ui.contacts.ContactsFragment"
+        android:label="ContactsFragment"
+        tools:layout="@layout/fragment_contacts" />
+
+    <fragment
+        android:id="@+id/navigation_history"
+        android:name="com.jaagruth.ui.history.HistoryFragment"
+        android:label="HistoryFragment"
+        tools:layout="@layout/fragment_history">
+        <action
+            android:id="@+id/action_history_to_detail"
+            app:destination="@id/incidentDetailFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/incidentDetailFragment"
+        android:name="com.jaagruth.ui.history.IncidentDetailFragment"
+        android:label="IncidentDetailFragment"
+        tools:layout="@layout/fragment_incident_detail" />
+
+    <fragment
+        android:id="@+id/navigation_profile"
+        android:name="com.jaagruth.ui.profile.ProfileFragment"
+        android:label="ProfileFragment"
+        tools:layout="@layout/fragment_profile">
+        <action
+            android:id="@+id/action_profile_to_login"
+            app:destination="@id/loginFragment"
+            app:popUpTo="@id/nav_graph"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+</navigation>

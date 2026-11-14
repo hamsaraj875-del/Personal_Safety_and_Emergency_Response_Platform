@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shape Appearances -->
+    <style name="ShapeAppearance.Jaagruth.Card" parent="ShapeAppearance.Material3.Corner.Medium">
+        <item name="cornerSize">@dimen/card_radius</item>
+    </style>
+
+    <style name="ShapeAppearance.Jaagruth.Button" parent="ShapeAppearance.Material3.Corner.Full">
+        <item name="cornerSize">@dimen/button_radius</item>
+    </style>
+
+    <style name="ShapeAppearance.Jaagruth.Input" parent="ShapeAppearance.Material3.Corner.Medium">
+        <item name="cornerSize">@dimen/input_radius</item>
+    </style>
+
+    <!-- Card Styles -->
+    <style name="Widget.Jaagruth.Card" parent="Widget.Material3.CardView.Elevated">
+        <item name="cardCornerRadius">@dimen/card_radius</item>
+        <item name="cardElevation">@dimen/card_elevation</item>
+        <item name="cardBackgroundColor">@color/white_surface</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="strokeColor">@color/card_border</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.Jaagruth.Card</item>
+    </style>
+
+    <style name="Widget.Jaagruth.Card.Pink" parent="Widget.Jaagruth.Card">
+        <item name="cardBackgroundColor">@color/soft_pink</item>
+        <item name="strokeColor">@color/light_rose</item>
+    </style>
+
+    <!-- Button Styles -->
+    <style name="Widget.Jaagruth.Button.Primary" parent="Widget.Material3.Button">
+        <item name="android:minHeight">@dimen/button_height</item>
+        <item name="cornerRadius">@dimen/button_radius</item>
+        <item name="backgroundTint">@color/primary_red</item>
+        <item name="android:textColor">@color/white_surface</item>
+        <item name="android:textSize">@dimen/text_body_lg</item>
+        <item name="android:fontFamily">@font/plus_jakarta_sans</item>
+        <item name="android:textStyle">bold</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.Jaagruth.Button</item>
+    </style>
+
+    <style name="Widget.Jaagruth.Button.Outlined" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:minHeight">@dimen/button_height</item>
+        <item name="cornerRadius">@dimen/button_radius</item>
+        <item name="strokeColor">@color/primary_red</item>
+        <item name="strokeWidth">1.5dp</item>
+        <item name="android:textColor">@color/primary_red</item>
+        <item name="android:textSize">@dimen/text_body_lg</item>
+        <item name="android:fontFamily">@font/plus_jakarta_sans</item>
+        <item name="android:textStyle">bold</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.Jaagruth.Button</item>
+    </style>
+
+    <style name="Widget.Jaagruth.Button.Cancel" parent="Widget.Material3.Button">
+        <item name="android:minHeight">@dimen/button_height</item>
+        <item name="cornerRadius">@dimen/button_radius</item>
+        <item name="backgroundTint">@color/white_surface</item>
+        <item name="android:textColor">@color/dark_red</item>
+        <item name="android:textSize">@dimen/text_body_lg</item>
+        <item name="android:fontFamily">@font/plus_jakarta_sans</item>
+        <item name="android:textStyle">bold</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.Jaagruth.Button</item>
+    </style>
+
+    <!-- Typography Styles -->
+    <style name="TextAppearance.Jaagruth.Title" parent="TextAppearance.Material3.HeadlineMedium">
+        <item name="android:textColor">@color/heading</item>
+        <item name="android:fontFamily">@font/plus_jakarta_sans</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">@dimen/text_title</item>
+    </style>
+
+    <style name="TextAppearance.Jaagruth.Heading" parent="TextAppearance.Material3.HeadlineSmall">
+        <item name="android:textColor">@color/heading</item>
+        <item name="android:fontFamily">@font/plus_jakarta_sans</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">@dimen/text_heading</item>
+    </style>
+
+    <style name="TextAppearance.Jaagruth.Subheading" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:textColor">@color/secondary_text</item>
+        <item name="android:fontFamily">@font/plus_jakarta_sans</item>
+        <item name="android:textSize">@dimen/text_subheading</item>
+    </style>
+
+    <style name="TextAppearance.Jaagruth.Body" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:textColor">@color/secondary_text</item>
+        <item name="android:fontFamily">@font/plus_jakarta_sans</item>
+        <item name="android:textSize">@dimen/text_body</item>
+    </style>
+
+    <style name="TextAppearance.Jaagruth.BodyLarge" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:textColor">@color/heading</item>
+        <item name="android:fontFamily">@font/plus_jakarta_sans</item>
+        <item name="android:textSize">@dimen/text_body_lg</item>
+    </style>
+
+    <!-- Bottom Navigation Pill Indicator -->
+    <style name="Widget.Jaagruth.BottomNav.ActiveIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:color">@color/light_rose</item>
+        <item name="android:width">56dp</item>
+        <item name="android:height">32dp</item>
+    </style>
+</resources>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Component Dimensions -->
+    <dimen name="card_radius">22dp</dimen>
+    <dimen name="card_elevation">3dp</dimen>
+    <dimen name="button_height">52dp</dimen>
+    <dimen name="button_radius">26dp</dimen>
+    <dimen name="chip_radius">14dp</dimen>
+    <dimen name="input_radius">16dp</dimen>
+    <dimen name="avatar_size_large">72dp</dimen>
+    <dimen name="avatar_size_small">40dp</dimen>
+
+    <!-- SOS Button Sizing -->
+    <dimen name="sos_center_size">180dp</dimen>
+    <dimen name="sos_middle_ring_size">230dp</dimen>
+    <dimen name="sos_outer_ring_size">280dp</dimen>
+
+    <!-- Margins & Paddings -->
+    <dimen name="spacing_xxs">4dp</dimen>
+    <dimen name="spacing_xs">8dp</dimen>
+    <dimen name="spacing_sm">12dp</dimen>
+    <dimen name="spacing_md">16dp</dimen>
+    <dimen name="spacing_lg">20dp</dimen>
+    <dimen name="spacing_xl">24dp</dimen>
+    <dimen name="spacing_xxl">32dp</dimen>
+    <dimen name="spacing_huge">48dp</dimen>
+
+    <!-- Typography Text Sizes -->
+    <dimen name="text_caption">12sp</dimen>
+    <dimen name="text_body_sm">13sp</dimen>
+    <dimen name="text_body">14sp</dimen>
+    <dimen name="text_body_lg">16sp</dimen>
+    <dimen name="text_subheading">18sp</dimen>
+    <dimen name="text_heading">22sp</dimen>
+    <dimen name="text_title">26sp</dimen>
+    <dimen name="text_countdown">64sp</dimen>
+    <dimen name="text_sos">36sp</dimen>
+</resources>

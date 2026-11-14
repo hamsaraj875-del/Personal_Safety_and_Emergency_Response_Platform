@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal">
+
+    <!-- Step indicator with vertical connector -->
+    <LinearLayout
+        android:layout_width="32dp"
+        android:layout_height="match_parent"
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_step_number"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:background="@drawable/bg_status_chip"
+            android:fontFamily="@font/plus_jakarta_sans"
+            android:gravity="center"
+            android:textColor="@color/primary_red"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            tools:text="1" />
+
+        <View
+            android:id="@+id/step_vertical_line"
+            android:layout_width="2dp"
+            android:layout_height="24dp"
+            android:background="@color/divider_color" />
+    </LinearLayout>
+
+    <!-- Step Title and Subtitle -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:paddingBottom="12dp">
+
+        <TextView
+            android:id="@+id/tv_step_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/plus_jakarta_sans"
+            android:textColor="@color/heading"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            tools:text="Contact 1" />
+
+        <TextView
+            android:id="@+id/tv_step_subtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:fontFamily="@font/plus_jakarta_sans"
+            android:textColor="@color/secondary_text"
+            android:textSize="12sp"
+            tools:text="Ananya (Sister)" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/iv_step_status_icon"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:layout_gravity="top"
+        android:layout_marginTop="3dp"
+        android:contentDescription="@null"
+        android:src="@drawable/ic_check_circle"
+        tools:src="@drawable/ic_check_circle" />
+
+</LinearLayout>
