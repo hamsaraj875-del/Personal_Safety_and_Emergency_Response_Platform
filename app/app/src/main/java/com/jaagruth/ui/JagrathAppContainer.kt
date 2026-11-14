@@ -1,8 +1,11 @@
 package com.jaagruth.ui
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -272,11 +275,28 @@ fun JagrathAppContainer() {
     fun triggerPhoneCallIntent(phone: String) {
         try {
             val cleanPhone = phone.replace(" ", "").replace("-", "")
-            val dialIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$cleanPhone"))
-            dialIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(dialIntent)
+            val hasCallPermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CALL_PHONE
+            ) == PackageManager.PERMISSION_GRANTED
+
+            val callIntent = if (hasCallPermission) {
+                // Directly dials and places the call immediately without pressing call button
+                Intent(Intent.ACTION_CALL, Uri.parse("tel:$cleanPhone"))
+            } else {
+                Intent(Intent.ACTION_DIAL, Uri.parse("tel:$cleanPhone"))
+            }
+            callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(callIntent)
         } catch (e: Exception) {
-            // Simulated dial fallback on devices without cellular dialer
+            try {
+                val cleanPhone = phone.replace(" ", "").replace("-", "")
+                val dialIntent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$cleanPhone"))
+                dialIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(dialIntent)
+            } catch (e2: Exception) {
+                // Simulated dial fallback on devices without cellular dialer
+            }
         }
     }
 

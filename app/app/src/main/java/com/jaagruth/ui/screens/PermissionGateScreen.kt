@@ -90,6 +90,13 @@ fun PermissionGateScreen(
     var inputRelation by remember { mutableStateOf("Family") }
     var errorMsg by remember { mutableStateOf("") }
 
+    // Runtime permissions launcher for direct phone calling and location
+    val runtimePermissionsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        onPermissionsGranted(contactList.toList())
+    }
+
     // Native Android Contact Picker launcher
     val contactPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickContact()
@@ -558,7 +565,14 @@ fun PermissionGateScreen(
                             Toast.makeText(context, "Please add at least one priority contact", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
-                        onPermissionsGranted(contactList.toList())
+                        runtimePermissionsLauncher.launch(
+                            arrayOf(
+                                android.Manifest.permission.CALL_PHONE,
+                                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                android.Manifest.permission.ACCESS_COARSE_LOCATION,
+                                android.Manifest.permission.READ_CONTACTS
+                            )
+                        )
                     },
                     modifier = Modifier
                         .fillMaxWidth()
