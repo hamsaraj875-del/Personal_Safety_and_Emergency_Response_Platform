@@ -11,8 +11,3 @@ build
 local.properties
 .idea
 *.iml
-**/.idea/
-**/.gradle/
-**/local.properties
-website/dist/
-app/app/build/

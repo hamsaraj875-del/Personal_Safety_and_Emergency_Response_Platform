@@ -182,13 +182,14 @@ export class IncidentService {
 
     const userDoc = await User.findById(incident.userId);
     if (!userDoc) throw new AppError('User account not found.', 'NOT_FOUND', 404);
+    if (user.id !== incident.userId && !['authority', 'admin'].includes(user.role)) throw new AppError('Unauthorized to resolve this incident.', 'FORBIDDEN', 403);
 
     const isSafePin = userDoc.safetyPinHash && (await bcrypt.compare(pin, userDoc.safetyPinHash));
     const isDuressPin = userDoc.duressPinHash && (await bcrypt.compare(pin, userDoc.duressPinHash));
 
     // Fallback for default demo seed PINs (1234 safe, 9999 duress) if unhashed in migration
-    const matchesSafe = isSafePin || pin === '1234';
-    const matchesDuress = isDuressPin || pin === '9999';
+    const matchesSafe = Boolean(isSafePin);
+    const matchesDuress = Boolean(isDuressPin);
 
     if (!matchesSafe && !matchesDuress) {
       incident.failedPinAttempts = (incident.failedPinAttempts || 0) + 1;

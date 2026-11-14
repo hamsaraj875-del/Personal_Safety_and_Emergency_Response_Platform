@@ -9,6 +9,7 @@ const responderSchema = new mongoose.Schema(
     skills: [{ type: String }],
     category: { type: String, enum: ['Security', 'Medical', 'Volunteer'], default: 'Security' },
     phone: { type: String, required: true },
+    passwordHash: { type: String, default: '' },
     avatar: { type: String, default: '' },
     rating: { type: Number, default: 4.8 },
     verified: { type: Boolean, default: true },

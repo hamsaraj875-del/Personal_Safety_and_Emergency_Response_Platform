@@ -3,6 +3,7 @@ import { env } from '../config/env.js';
 import { AppError } from './error.js';
 import { User } from '../models/User.js';
 import { AuthorityOfficer } from '../models/AuthorityOfficer.js';
+import { Responder } from '../models/Responder.js';
 
 export async function authenticate(req, res, next) {
   try {
@@ -26,6 +27,10 @@ export async function authenticate(req, res, next) {
         sector: officer.sector,
         role: 'authority'
       };
+    } else if (decoded.role === 'responder') {
+      const responder = await Responder.findById(decoded.id);
+      if (!responder) throw new AppError('Responder account not found.', 'UNAUTHORIZED', 401);
+      req.user = { id: responder.id, name: responder.name, phone: responder.phone, role: 'responder' };
     } else {
       const user = await User.findById(decoded.id);
       if (!user) {

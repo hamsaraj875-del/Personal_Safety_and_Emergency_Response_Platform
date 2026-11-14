@@ -9,7 +9,6 @@ import com.jaagruth.services.EscalationEngine
 import com.jaagruth.services.LocationService
 import com.jaagruth.services.NotificationService
 import com.jaagruth.services.SmsCallService
-import org.osmdroid.config.Configuration
 
 class JaagruthApp : Application() {
 
@@ -33,10 +32,6 @@ class JaagruthApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-
-        // Initialize OpenStreetMap configuration
-        Configuration.getInstance().load(this, getSharedPreferences("osmdroid", MODE_PRIVATE))
-        Configuration.getInstance().userAgentValue = packageName
 
         // Initialize repositories and services (Manual Dependency Injection)
         authRepository = AuthRepository(this)

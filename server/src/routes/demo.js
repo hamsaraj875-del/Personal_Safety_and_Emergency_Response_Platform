@@ -7,8 +7,11 @@ import { tamperBlock, restoreTamperedBlock, verifyChainIntegrity } from '../serv
 import { SimulationService } from '../services/simulation.js';
 import { broadcastToIncident } from '../realtime/ws.js';
 import { seedDatabase } from '../seed/seed.js';
+import { authenticate } from '../middleware/auth.js';
+import { requireRole } from '../middleware/role.js';
 
 const router = express.Router();
+router.use(authenticate, requireRole('admin', 'authority'));
 
 // Middleware: Only active if DEMO_MODE === true
 router.use((req, res, next) => {
@@ -169,8 +172,10 @@ router.post('/demo/benchmark', async (req, res, next) => {
 
 router.post('/demo/reset', async (req, res, next) => {
   try {
-    await seedDatabase(true);
-    res.json({ success: true, message: 'Database reset and re-seeded with demo records.' });
+    if (process.env.ALLOW_DEMO_RESET !== 'true') throw new AppError('Demo reset is disabled.', 'FORBIDDEN', 403);
+    // Keep this operation non-destructive: seedDatabase(false) only inserts missing demo records.
+    await seedDatabase(false);
+    res.json({ success: true, message: 'Missing demo records were seeded; existing records were preserved.' });
   } catch (err) {
     next(err);
   }

@@ -24,6 +24,7 @@ import demoRoute from './routes/demo.js';
 
 const app = express();
 const server = http.createServer(app);
+app.set('trust proxy', 1);
 
 // Security & Parsing
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -34,9 +35,7 @@ app.use(
     origin: (origin, callback) => {
       if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
         callback(null, true);
-      } else {
-        callback(null, true); // Permissive for local dev / testing
-      }
+      } else callback(new Error('Origin is not allowed by CORS.'));
     },
     credentials: true
   })
@@ -44,7 +43,10 @@ app.use(
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(globalLimiter);
+app.use((req, res, next) => {
+  if (req.path === '/health' || (req.method === 'POST' && /^\/api\/v1\/incidents\/[^/]+\/location$/.test(req.path))) return next();
+  return globalLimiter(req, res, next);
+});
 
 // Public Health & Tracking Routes
 app.use(healthRoute);
@@ -73,6 +75,8 @@ async function boot() {
   try {
     console.log('--- Starting Jaagruth Emergency Platform Server ---');
     console.log(`Node: ${process.version} | Mode: ${env.NODE_ENV} | Demo: ${env.DEMO_MODE}`);
+    if (/placeholder|change.?me|secret123|your.?secret/i.test(env.JWT_SECRET)) console.warn('WARNING: JWT_SECRET appears to be a placeholder. Replace it before exposing this server.');
+    if (env.PUBLIC_BASE_URL.includes('localhost') && env.NOTIFIER_DRIVER !== 'mock') console.warn('WARNING: PUBLIC_BASE_URL contains localhost while notifications are enabled.');
 
     // 1. Connect to MongoDB Atlas
     await connectDB();

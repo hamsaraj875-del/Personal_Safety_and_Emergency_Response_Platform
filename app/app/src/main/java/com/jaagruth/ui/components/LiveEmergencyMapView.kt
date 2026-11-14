@@ -1,12 +1,5 @@
 package com.jaagruth.ui.components
 
-import android.annotation.SuppressLint
-import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,9 +15,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -32,30 +25,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng as GmsLatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapType
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.Polyline
+import com.google.maps.android.compose.rememberCameraPositionState
 import com.jaagruth.model.LatLng
 import com.jaagruth.model.SafetyHub
 import com.jaagruth.model.VerifiedResponder
 import com.jaagruth.theme.JagrathPrimaryRed
-import org.osmdroid.config.Configuration
-import org.osmdroid.events.MapListener
-import org.osmdroid.events.ScrollEvent
-import org.osmdroid.events.ZoomEvent
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.CustomZoomButtonsController
-import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.Marker
-import org.osmdroid.views.overlay.Polyline
 
-@SuppressLint("ClickableViewAccessibility")
 @Composable
 fun LiveEmergencyMapView(
     userPos: LatLng,
@@ -66,119 +55,85 @@ fun LiveEmergencyMapView(
     onSelectHub: (SafetyHub) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    var currentZoom by remember { mutableDoubleStateOf(15.5) }
+    var currentZoom by remember { mutableFloatStateOf(15.5f) }
 
-    val mapView = remember {
-        Configuration.getInstance().load(context, context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE))
-        MapView(context).apply {
-            setTileSource(TileSourceFactory.MAPNIK)
-            setMultiTouchControls(true)
-            setBuiltInZoomControls(false)
-            zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
-            minZoomLevel = 5.0
-            maxZoomLevel = 19.0
-            controller.setZoom(15.5)
-            controller.setCenter(GeoPoint(userPos.lat, userPos.lng))
+    val userGmsLatLng = GmsLatLng(userPos.lat, userPos.lng)
 
-            setOnTouchListener { v, _ ->
-                v.parent?.requestDisallowInterceptTouchEvent(true)
-                false
-            }
-
-            addMapListener(object : MapListener {
-                override fun onScroll(event: ScrollEvent?): Boolean = false
-                override fun onZoom(event: ZoomEvent?): Boolean {
-                    event?.zoomLevel?.let { currentZoom = it.toDouble() }
-                    return false
-                }
-            })
-        }
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(userGmsLatLng, 15.5f)
     }
 
-    DisposableEffect(lifecycleOwner, mapView) {
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_RESUME -> mapView.onResume()
-                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
-                Lifecycle.Event.ON_DESTROY -> mapView.onDetach()
-                else -> {}
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            mapView.onDetach()
-        }
+    // Re-center camera when user position changes
+    LaunchedEffect(userPos) {
+        cameraPositionState.animate(
+            CameraUpdateFactory.newLatLngZoom(userGmsLatLng, cameraPositionState.position.zoom)
+        )
     }
 
-    DisposableEffect(userPos, responderPos, safetyHubs, routePoints) {
-        mapView.overlays.clear()
-
-        // 1. Draw route polyline
-        if (routePoints.isNotEmpty()) {
-            val polyline = Polyline().apply {
-                val geoPoints = routePoints.map { GeoPoint(it.lat, it.lng) }
-                setPoints(geoPoints)
-                outlinePaint.color = JagrathPrimaryRed.toArgb()
-                outlinePaint.strokeWidth = 10f
-                outlinePaint.isAntiAlias = true
-            }
-            mapView.overlays.add(polyline)
-        }
-
-        // 2. User marker
-        val userMarker = Marker(mapView).apply {
-            position = GeoPoint(userPos.lat, userPos.lng)
-            title = "You are here"
-            snippet = "Live emergency location"
-            icon = createTextMarkerDrawable(context, "📍", 42)
-            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-        }
-        mapView.overlays.add(userMarker)
-
-        // 3. Responder marker
-        val responderMarker = Marker(mapView).apply {
-            position = GeoPoint(responderPos.lat, responderPos.lng)
-            title = activeResponder?.name ?: "1st Responder"
-            snippet = "${activeResponder?.etaMinutes ?: 4} min ETA"
-            icon = createTextMarkerDrawable(context, "🚑", 42)
-            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-        }
-        mapView.overlays.add(responderMarker)
-
-        // 4. Safety Hubs markers
-        safetyHubs.forEach { hub ->
-            val hubMarker = Marker(mapView).apply {
-                position = GeoPoint(hub.location.lat, hub.location.lng)
-                title = hub.name
-                snippet = "${hub.distanceMeters}m away • ${hub.status}"
-                icon = createTextMarkerDrawable(context, hub.icon, 36)
-                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                setOnMarkerClickListener { _, _ ->
-                    onSelectHub(hub)
-                    true
-                }
-            }
-            mapView.overlays.add(hubMarker)
-        }
-
-        mapView.invalidate()
-
-        onDispose {
-            // cleanup if needed
-        }
+    val mapProperties = remember {
+        MapProperties(
+            mapType = MapType.NORMAL,
+            isMyLocationEnabled = false,
+            minZoomPreference = 5f,
+            maxZoomPreference = 19f
+        )
     }
 
-    val canZoomIn = currentZoom < 19.0
-    val canZoomOut = currentZoom > 5.0
+    val uiSettings = remember {
+        MapUiSettings(
+            zoomControlsEnabled = false,
+            myLocationButtonEnabled = false,
+            mapToolbarEnabled = false,
+            compassEnabled = false
+        )
+    }
 
     Box(modifier = modifier) {
-        AndroidView(
-            factory = { mapView },
-            modifier = Modifier.fillMaxSize()
-        )
+        GoogleMap(
+            modifier = Modifier.fillMaxSize(),
+            cameraPositionState = cameraPositionState,
+            properties = mapProperties,
+            uiSettings = uiSettings
+        ) {
+            // 1. Draw route polyline
+            if (routePoints.isNotEmpty()) {
+                Polyline(
+                    points = routePoints.map { GmsLatLng(it.lat, it.lng) },
+                    color = JagrathPrimaryRed,
+                    width = 10f
+                )
+            }
+
+            // 2. User marker
+            Marker(
+                state = MarkerState(position = userGmsLatLng),
+                title = "You are here",
+                snippet = "Live emergency location",
+                icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
+            )
+
+            // 3. Responder marker
+            Marker(
+                state = MarkerState(position = GmsLatLng(responderPos.lat, responderPos.lng)),
+                title = activeResponder?.name ?: "1st Responder",
+                snippet = "${activeResponder?.etaMinutes ?: 4} min ETA",
+                icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
+            )
+
+            // 4. Safety Hub markers
+            safetyHubs.forEach { hub ->
+                Marker(
+                    state = MarkerState(position = GmsLatLng(hub.location.lat, hub.location.lng)),
+                    title = hub.name,
+                    snippet = "${hub.distanceMeters}m away • ${hub.status}",
+                    icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN),
+                    onClick = {
+                        onSelectHub(hub)
+                        true
+                    }
+                )
+            }
+        }
 
         // Semi-transparent dark background behind bottom-start safety hub label
         val primaryHub = safetyHubs.firstOrNull { it.type == "hospital" } ?: safetyHubs.firstOrNull()
@@ -214,6 +169,9 @@ fun LiveEmergencyMapView(
                 .padding(end = 10.dp, bottom = 10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            val canZoomIn = cameraPositionState.position.zoom < 19f
+            val canZoomOut = cameraPositionState.position.zoom > 5f
+
             // Zoom In (+)
             Surface(
                 modifier = Modifier
@@ -221,8 +179,8 @@ fun LiveEmergencyMapView(
                     .clip(RoundedCornerShape(8.dp))
                     .clickable(enabled = canZoomIn) {
                         if (canZoomIn) {
-                            mapView.controller.zoomIn()
-                            currentZoom = (currentZoom + 1.0).coerceAtMost(19.0)
+                            val newZoom = (cameraPositionState.position.zoom + 1f).coerceAtMost(19f)
+                            cameraPositionState.move(CameraUpdateFactory.zoomTo(newZoom))
                         }
                     },
                 shape = RoundedCornerShape(8.dp),
@@ -250,8 +208,8 @@ fun LiveEmergencyMapView(
                     .clip(RoundedCornerShape(8.dp))
                     .clickable(enabled = canZoomOut) {
                         if (canZoomOut) {
-                            mapView.controller.zoomOut()
-                            currentZoom = (currentZoom - 1.0).coerceAtLeast(5.0)
+                            val newZoom = (cameraPositionState.position.zoom - 1f).coerceAtLeast(5f)
+                            cameraPositionState.move(CameraUpdateFactory.zoomTo(newZoom))
                         }
                     },
                 shape = RoundedCornerShape(8.dp),
@@ -273,17 +231,4 @@ fun LiveEmergencyMapView(
             }
         }
     }
-}
-
-private fun createTextMarkerDrawable(context: Context, emoji: String, sizePx: Int): Drawable {
-    val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(bitmap)
-    val paint = Paint().apply {
-        textSize = (sizePx * 0.75).toFloat()
-        textAlign = Paint.Align.CENTER
-        isAntiAlias = true
-    }
-    val yPos = ((canvas.height / 2) - ((paint.descent() + paint.ascent()) / 2))
-    canvas.drawText(emoji, (canvas.width / 2).toFloat(), yPos, paint)
-    return BitmapDrawable(context.resources, bitmap)
 }

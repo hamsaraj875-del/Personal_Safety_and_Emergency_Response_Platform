@@ -15,19 +15,7 @@ export async function seedDatabase(forceClean = false) {
 
   console.log('--- Starting Idempotent Seeding ---');
 
-  if (forceClean) {
-    console.log('Force clean: dropping demo collections...');
-    await Promise.all([
-      User.deleteMany({}),
-      Contact.deleteMany({}),
-      Responder.deleteMany({}),
-      SafetyHub.deleteMany({}),
-      AuthorityOfficer.deleteMany({}),
-      FleetVehicle.deleteMany({}),
-      AnprDetection.deleteMany({}),
-      Hotspot.deleteMany({})
-    ]);
-  }
+  // Reset requests are intentionally non-destructive; real accounts share these collections.
 
   const salt = await bcrypt.genSalt(10);
   const defaultPassword = 'password123';
