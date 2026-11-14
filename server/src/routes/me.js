@@ -32,7 +32,7 @@ const deviceTokenSchema = z.object({
   platform: z.enum(['android', 'ios', 'web'])
 });
 
-router.use(authenticate);
+router.use('/me', authenticate);
 
 router.get('/me', async (req, res, next) => {
   try {
