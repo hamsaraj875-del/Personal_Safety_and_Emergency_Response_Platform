@@ -15,6 +15,7 @@ import { MAP_CONFIG, getNearbyResponders, getLocalRoutePoints } from '../constan
 import { getCurrentDeviceLocation, requestLocationPermission, reverseGeocodeCoords } from '../services/locationService';
 import {
   getLiveSurroundingEmergencyHubs,
+  getVerifiedBengaluruFacilities,
   getDistanceKm,
   formatDistance
 } from '../services/emergencyPlacesService';
@@ -49,7 +50,19 @@ export default function MapTrackingView({
   const [responderPos, setResponderPos] = useState(() => activeResp.location);
 
   // Surrounding emergency hubs around user & hospital analysis
-  const [safetyHubs, setSafetyHubs] = useState([]);
+  const [safetyHubs, setSafetyHubs] = useState(() => {
+    try {
+      const v = getVerifiedBengaluruFacilities(userPos);
+      return [
+        { ...v.hospitals[1], id: "hub_primary_hospital", category: "Hospital / Medical Center" },
+        { ...v.police, id: "hub_primary_police", category: "Law Enforcement" },
+        { ...v.safeZone, id: "hub_primary_safezone", category: "Guarded Safe Haven" },
+        { ...v.fireStation, id: "hub_primary_fire", category: "Fire & Rescue Station" }
+      ];
+    } catch (e) {
+      return [];
+    }
+  });
   const [hospitalAnalysis, setHospitalAnalysis] = useState(null);
   const [selectedHub, setSelectedHub] = useState(null);
   const [routePoints, setRoutePoints] = useState(() => getLocalRoutePoints(userPos, responderPos));

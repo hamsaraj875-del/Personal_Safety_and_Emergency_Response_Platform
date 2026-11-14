@@ -19,6 +19,7 @@ import { MAP_CONFIG, getNearbyResponders, getLocalRoutePoints } from '../constan
 import { getCurrentDeviceLocation, requestLocationPermission } from '../services/locationService';
 import {
   getLiveSurroundingEmergencyHubs,
+  getVerifiedBengaluruFacilities,
   getDistanceKm,
   formatDistance
 } from '../services/emergencyPlacesService';
@@ -57,8 +58,20 @@ export default function AmbulanceOnTheWayScreen({
   const [responder, setResponder] = useState(() => getSafeResponder(pos, activeResponder));
   const [responderPos, setResponderPos] = useState(() => responder.location);
 
-  // 3. Surrounding emergency hubs & hospital analysis
-  const [safetyHubs, setSafetyHubs] = useState([]);
+  // 3. Surrounding emergency hubs & hospital analysis (Initialized immediately with verified local hubs)
+  const [safetyHubs, setSafetyHubs] = useState(() => {
+    try {
+      const v = getVerifiedBengaluruFacilities(pos);
+      return [
+        { ...v.hospitals[1], id: "hub_primary_hospital", category: "Hospital / Medical Center" },
+        { ...v.police, id: "hub_primary_police", category: "Law Enforcement" },
+        { ...v.safeZone, id: "hub_primary_safezone", category: "Guarded Safe Haven" },
+        { ...v.fireStation, id: "hub_primary_fire", category: "Fire & Rescue Station" }
+      ];
+    } catch (e) {
+      return [];
+    }
+  });
   const [hospitalAnalysis, setHospitalAnalysis] = useState(null);
   const [selectedHub, setSelectedHub] = useState(null);
   const [simulateClosed, setSimulateClosed] = useState(false);
@@ -239,7 +252,7 @@ export default function AmbulanceOnTheWayScreen({
       )}
 
       {/* Embedded Live Map Container (Zero-Watermark Leaflet + Google Maps toggle) */}
-      <div className="relative flex-1 w-full my-1 rounded-2xl overflow-hidden border-y border-white/15 shadow-inner bg-slate-900">
+      <div className="relative flex-1 w-full my-1 rounded-2xl overflow-hidden border-y border-white/15 shadow-inner bg-slate-900 min-h-[220px]">
         <LiveEmergencyMap
           userPos={pos}
           responderPos={responderPos}

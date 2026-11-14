@@ -325,6 +325,12 @@ export default function AuthorityMap({
 
       leafletLayersRef.current.displacementRoute = routeLine;
     }
+
+    setTimeout(() => {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.invalidateSize();
+      }
+    }, 150);
   }, [engine, centerCoords, radiusKm, hotspots, activeIncidents, ambulances, blindSpot, displacementPlan, selectedIncidentId]);
 
   return (

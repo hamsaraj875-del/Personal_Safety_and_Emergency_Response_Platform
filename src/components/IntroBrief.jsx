@@ -1,60 +1,66 @@
 import React, { useEffect } from 'react';
+import { ArrowRight, ShieldCheck, Zap } from 'lucide-react';
 
 export default function IntroBrief({ onComplete }) {
   useEffect(() => {
-    // Stays for ~2 seconds, then automatically advances to login screen
+    // Stays for ~1.8 seconds, then automatically jumps to the Login Page
     const timer = setTimeout(() => {
       onComplete && onComplete();
-    }, 2200);
+    }, 1800);
 
     return () => clearInterval(timer);
   }, [onComplete]);
 
   return (
-    <div className="relative w-full h-full flex flex-col justify-between bg-white text-slate-900 px-7 py-8 select-none overflow-hidden">
-      {/* Top subtle auto-advance indicator */}
-      <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden mb-6">
-        <div
-          className="bg-[#DE354C] h-full rounded-full transition-all duration-[2200ms] ease-linear"
-          style={{ width: '100%' }}
-        />
+    <div className="relative w-full h-full flex flex-col justify-between bg-gradient-to-b from-[#F43F5E] via-[#EA3B52] to-[#BE123C] text-white p-6 select-none overflow-hidden">
+      {/* Top progress bar for 1.8s auto advance */}
+      <div className="pt-8 px-2">
+        <div className="w-full bg-black/20 h-1 rounded-full overflow-hidden">
+          <div
+            className="bg-white h-full rounded-full transition-all duration-[1800ms] ease-linear"
+            style={{ width: '100%' }}
+          />
+        </div>
       </div>
 
-      {/* Main Content matching exact screenshot typography */}
-      <div className="flex-1 flex flex-col justify-center max-w-[340px] mx-auto w-full -mt-6">
-        {/* Brand tag in soft coral red */}
-        <span className="text-[#DE354C] text-[17px] font-normal block mb-2 tracking-tight">
-          Jaagruth
-        </span>
+      {/* Center Highlighted Card with new font style */}
+      <div className="my-auto w-full max-w-[320px] mx-auto text-left">
+        {/* Highlighted Official Logo & Badge */}
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="w-10 h-10 rounded-2xl overflow-hidden shadow-md border border-white/40">
+            <img src="/logo.png" alt="Jagrath Logo" className="w-full h-full object-cover" />
+          </div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-[12px] font-medium text-white border border-white/25 shadow-sm">
+            <span>Jagrath Safety Network</span>
+          </div>
+        </div>
 
-        {/* Main Heading in clean geometric font */}
-        <h1 className="text-[28px] sm:text-[30px] font-normal text-slate-900 tracking-tight leading-[1.22] mb-3">
-          Jaagruth Safety<br />Network
+        {/* Highlighted Main Heading with new font style */}
+        <h1 className="text-[28px] sm:text-[30px] font-normal text-white tracking-tight leading-tight drop-shadow-sm">
+          Unified Emergency<br />Response Platform
         </h1>
 
-        {/* Subtitle */}
-        <p className="text-[15px] font-normal text-slate-500 leading-snug mb-8">
-          Coordinated emergency response with a<br />tamper-evident record.
-        </p>
-
-        {/* Elevated Rounded Card */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.06)] space-y-3">
-          <p className="text-[16px] sm:text-[17px] font-normal text-slate-900 leading-snug">
-            A trusted circle, ready when you<br />need help.
+        {/* Very Brief 2-Line Explanation */}
+        <div className="mt-4 space-y-2 text-white/90 text-[14px] font-normal leading-relaxed">
+          <p className="flex items-start gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-white mt-2 flex-shrink-0" />
+            <span>Instant SOS escalation to trusted family and verified nearby helpers.</span>
           </p>
-          <p className="text-[14px] sm:text-[15px] font-normal text-slate-500 leading-relaxed">
-            One alert coordinates people nearby<br />and keeps a tamper-evident record.
+          <p className="flex items-start gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-white mt-2 flex-shrink-0" />
+            <span>Tamper-proof activity tracking with live GPS and privacy protection.</span>
           </p>
         </div>
       </div>
 
-      {/* Bottom Button matching screenshot */}
-      <div className="w-full max-w-[340px] mx-auto pt-4">
+      {/* Bottom Button & Skip */}
+      <div className="pb-6 w-full max-w-[320px] mx-auto flex flex-col items-center gap-3">
         <button
           onClick={onComplete}
-          className="w-full py-4 bg-[#DE354C] hover:bg-[#cf2f44] text-white rounded-full font-medium text-[16px] shadow-sm transition-all active:scale-[0.99] flex items-center justify-center cursor-pointer"
+          className="w-full py-3.5 px-6 bg-white hover:bg-slate-50 text-[#EA3B52] rounded-full font-medium text-[15px] shadow-lg shadow-black/15 transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
         >
-          Get started
+          <span>Continue to Login</span>
+          <ArrowRight className="w-4 h-4" />
         </button>
       </div>
     </div>
