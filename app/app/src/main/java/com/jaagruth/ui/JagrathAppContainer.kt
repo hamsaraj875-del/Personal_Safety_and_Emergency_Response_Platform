@@ -533,7 +533,7 @@ fun JagrathAppContainer() {
                             isCallActive = isCallActive,
                             isCallAcknowledged = isCallAcknowledged,
                             show112HandoffBanner = show112HandoffBanner,
-                            onAcknowledgeCall = {
+                            onContactAnswered = {
                                 isCallAcknowledged = true
                                 isCallActive = false
                                 callTimerJob?.cancel()
@@ -548,7 +548,7 @@ fun JagrathAppContainer() {
                                 )
                                 showToast("Contact confirmed answer! Emergency help coordinating.")
                             },
-                            onDirectCall112 = { handleDial112() }
+                            onDial112 = { handleDial112() }
                         )
                     }
                     EmergencyMode.MAP -> {
