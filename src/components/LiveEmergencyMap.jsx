@@ -24,9 +24,8 @@ export default function LiveEmergencyMap({
   isLocating = false,
   onLocateMe
 }) {
-  // Engine: 'emergency' (zero-watermark, 100% working Leaflet) | 'google' (Google Maps Platform)
-  // Default to 'emergency' to eliminate "Are you the owner?" watermark on unbilled keys, while offering 1-tap Google Maps
-  const [engine, setEngine] = useState('emergency');
+  // Default to Google Maps when API key is provided
+  const [engine, setEngine] = useState(GOOGLE_MAPS_API_KEY ? 'google' : 'emergency');
   const [googleAuthError, setGoogleAuthError] = useState(false);
 
   const leafletContainerRef = useRef(null);
