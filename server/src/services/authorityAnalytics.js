@@ -19,19 +19,31 @@ export async function getSectorData(centerLat = 12.9352, centerLng = 77.5358, ra
   const formattedActiveIncidents = realActiveIncidents.map(inc => {
     const coords = inc.location?.coordinates || [77.5358, 12.9352];
     const diffMins = Math.max(1, Math.round((Date.now() - new Date(inc.createdAt).getTime()) / 60000));
+    const locObj = { lat: coords[1], lng: coords[0] };
     return {
       id: inc._id,
       code: inc.code,
+      userName: inc.userName,
       personName: inc.userName,
+      userPhone: inc.userPhone,
       timeElapsed: `${diffMins}m ago`,
       locationName: inc.address,
-      coordinates: { lat: coords[1], lng: coords[0] },
+      address: inc.address,
+      location: locObj,
+      coordinates: locObj,
       status: inc.status,
       severity: inc.severity,
       duress: inc.duress,
+      category: inc.category || 'General Emergency',
+      speedProfile: inc.speedProfile || 'FAST',
+      ladder: inc.ladder,
+      escalationStep: inc.ladder?.step || 1,
+      assignedResponder: inc.assignedResponder,
       assignedUnit: inc.assignedResponder?.name || (inc.severity >= 4 ? 'ALS-04 (Auto)' : 'Pending Dispatch'),
+      assignedEta: inc.assignedResponder?.etaMinutes ? `${inc.assignedResponder.etaMinutes} min` : '4.8 min',
       eta: inc.assignedResponder?.etaMinutes ? `${inc.assignedResponder.etaMinutes} min` : '4.8 min',
-      notes: inc.duress ? 'COVERT DURESS SIGNAL DETECTED' : `Live Tracking: ${inc.category}`
+      notes: inc.duress ? 'COVERT DURESS SIGNAL DETECTED' : `Live Tracking: ${inc.category}`,
+      telemetry: { speed: '0 km/h', accuracy: '8m', battery: '82%' }
     };
   });
 
@@ -157,9 +169,15 @@ export async function getSectorData(centerLat = 12.9352, centerLng = 77.5358, ra
 
   // 5. Coverage Blind Spot & Displacement Plan
   const coverageBlindSpot = {
+    id: 'blind_spot_01',
+    name: 'Outer Ring Road Junction 4 (East Corridor)',
     corridorName: 'Bull Temple Arterial Corridor #4',
+    location: offset(2.1, -1.2),
+    currentEtaMinutes: 11.4,
+    recommendedEtaMinutes: 4.2,
     coverageScore: '41%',
     gapSeverity: 'HIGH DEFICIT',
+    deficitSeverity: 'HIGH',
     deficiencyReason: 'All 3 sector ambulances clustered 4.2 km North at City Hospital staging.',
     targetStagingCoords: offset(2.0, -1.1)
   };

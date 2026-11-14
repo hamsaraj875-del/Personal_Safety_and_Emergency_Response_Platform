@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import AuthorityDashboard from './components/authority/AuthorityDashboard';
 import AuthorityLoginModal from './components/authority/AuthorityLoginModal';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 export default function App() {
   const [authorityCoords, setAuthorityCoords] = useState(null);
@@ -24,10 +25,12 @@ export default function App() {
           }}
         />
       ) : (
-        <AuthorityDashboard
-          authorityCoords={authorityCoords}
-          onReauthenticate={() => setIsAuthorized(false)}
-        />
+        <ErrorBoundary>
+          <AuthorityDashboard
+            authorityCoords={authorityCoords}
+            onReauthenticate={() => setIsAuthorized(false)}
+          />
+        </ErrorBoundary>
       )}
     </div>
   );
