@@ -95,6 +95,8 @@ fun IntroBriefScreen(
                         .height(4.dp)
                         .clip(CircleShape),
                     color = White,
+
+                    
                     trackColor = Color.Black.copy(alpha = 0.2f)
                 )
             }
