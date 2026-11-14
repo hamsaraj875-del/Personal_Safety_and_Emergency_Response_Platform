@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   AlertOctagon,
   ScanLine,
@@ -18,26 +18,189 @@ import {
   ShieldAlert,
   Zap,
   Activity,
-  FileCheck2
+  FileCheck2,
+  Volume2,
+  VolumeX,
+  Radio,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 
 import AuthorityMap from './AuthorityMap';
 import IncidentInspectDrawer from './IncidentInspectDrawer';
 import { generateSectorData } from '../../services/authorityAnalytics';
+import { api, authStorage } from '../../services/api';
+import { socketService } from '../../services/socket';
 
 export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords, onReauthenticate }) {
   // 5 Main Navigation Views: 'accidents' | 'anpr' | 'fleet' | 'falseCases' | 'map'
   const [activeView, setActiveView] = useState('accidents');
   const [radiusKm, setRadiusKm] = useState(5);
   const [selectedIncident, setSelectedIncident] = useState(null);
+  const [isServerOffline, setIsServerOffline] = useState(false);
+  const [activeSirenAlert, setActiveSirenAlert] = useState(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   const lat = authorityCoords?.lat || 12.9352;
   const lng = authorityCoords?.lng || 77.5358;
+
+  // Initialize with fallback simulated data first
   const [sectorData, setSectorData] = useState(() => generateSectorData(lat, lng));
 
-  // Authorize fleet rebalance
-  const handleAuthorizeDisplacement = () => {
-    setSectorData(prev => ({
+  // Audio siren synthesizer via Web Audio API (zero external assets needed)
+  const playSirenSound = (isDuress = false) => {
+    if (!soundEnabled) return;
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = isDuress ? 'sawtooth' : 'sine';
+      const now = ctx.currentTime;
+      osc.frequency.setValueAtTime(isDuress ? 750 : 580, now);
+      osc.frequency.linearRampToValueAtTime(isDuress ? 1100 : 880, now + 0.3);
+      osc.frequency.linearRampToValueAtTime(isDuress ? 750 : 580, now + 0.6);
+      osc.frequency.linearRampToValueAtTime(isDuress ? 1100 : 880, now + 0.9);
+      osc.frequency.linearRampToValueAtTime(isDuress ? 750 : 580, now + 1.2);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.3);
+      osc.start(now);
+      osc.stop(now + 1.3);
+    } catch (e) {
+      // AudioContext policy blocked before gesture, ignore
+    }
+  };
+
+  // 1. Fetch live sector data from server
+  const fetchSectorData = async () => {
+    try {
+      const data = await api.get(`/authority/sector?lat=${lat}&lng=${lng}&radiusKm=${radiusKm}`);
+      if (data && data.sectorName) {
+        setSectorData(data);
+        setIsServerOffline(false);
+      }
+    } catch (err) {
+      console.warn('Live server sector fetch failed, using fallback:', err.message);
+      setIsServerOffline(true);
+      // Keep existing simulated data
+    }
+  };
+
+  // Fetch when radius or coordinates change
+  useEffect(() => {
+    fetchSectorData();
+  }, [lat, lng, radiusKm]);
+
+  // 2. Realtime WebSocket subscriptions
+  useEffect(() => {
+    socketService.connect();
+
+    const unsubAlert = socketService.on('authority.alert', (alertData) => {
+      console.log('[AUTHORITY ALERT]', alertData);
+      setActiveSirenAlert(alertData);
+      playSirenSound(alertData.duress);
+
+      // Refresh sector data to pick up the new/escalated incident
+      fetchSectorData();
+    });
+
+    const unsubCreated = socketService.on('incident.created', (incident) => {
+      setSectorData((prev) => {
+        const exists = prev.activeIncidents.some((i) => i.id === incident.id);
+        const updated = exists ? prev.activeIncidents.map((i) => (i.id === incident.id ? incident : i)) : [incident, ...prev.activeIncidents];
+        return {
+          ...prev,
+          activeIncidents: updated,
+          telemetry: {
+            ...prev.telemetry,
+            activeSosCount: updated.length
+          }
+        };
+      });
+    });
+
+    const unsubStep = socketService.on('ladder.step', ({ incidentId, step, state }) => {
+      setSectorData((prev) => ({
+        ...prev,
+        activeIncidents: prev.activeIncidents.map((inc) => {
+          if (inc.id === incidentId) {
+            return {
+              ...inc,
+              ladder: {
+                ...(inc.ladder || {}),
+                step
+              },
+              escalationStep: step
+            };
+          }
+          return inc;
+        })
+      }));
+    });
+
+    const unsubResponder = socketService.on('responder.assigned', ({ incidentId, responder }) => {
+      setSectorData((prev) => ({
+        ...prev,
+        activeIncidents: prev.activeIncidents.map((inc) => {
+          if (inc.id === incidentId) {
+            return {
+              ...inc,
+              assignedResponderId: responder.id,
+              assignedResponder: responder,
+              assignedUnit: `${responder.name} (${responder.badge || 'EMS'})`,
+              assignedEta: `${responder.etaMinutes || 4}m`
+            };
+          }
+          return inc;
+        })
+      }));
+    });
+
+    const unsubResolved = socketService.on('incident.resolved', (incident) => {
+      setSectorData((prev) => {
+        const remaining = prev.activeIncidents.filter((i) => i.id !== incident.id);
+        return {
+          ...prev,
+          activeIncidents: remaining,
+          telemetry: {
+            ...prev.telemetry,
+            activeSosCount: remaining.length
+          }
+        };
+      });
+      if (selectedIncident?.id === incident.id) {
+        setSelectedIncident(null);
+      }
+    });
+
+    const unsubPoll = socketService.on('sector.poll', (polledData) => {
+      if (polledData && polledData.sectorName) {
+        setSectorData(polledData);
+        setIsServerOffline(false);
+      }
+    });
+
+    return () => {
+      unsubAlert();
+      unsubCreated();
+      unsubStep();
+      unsubResponder();
+      unsubResolved();
+      unsubPoll();
+    };
+  }, [lat, lng, radiusKm, soundEnabled]);
+
+  // Authorize fleet rebalance via server API
+  const handleAuthorizeDisplacement = async () => {
+    try {
+      await api.post('/authority/fleet/rebalance', { lat, lng });
+    } catch (err) {
+      console.warn('Fleet rebalance API fallback:', err.message);
+    }
+    setSectorData((prev) => ({
       ...prev,
       displacementPlan: {
         ...prev.displacementPlan,
@@ -46,25 +209,95 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
       coverageBlindSpot: {
         ...prev.coverageBlindSpot,
         currentEtaMinutes: 4.2,
-        deficitSeverity: "OPTIMAL"
+        deficitSeverity: 'OPTIMAL'
       }
     }));
   };
 
-  const handleResolveIncident = (incidentId) => {
-    setSectorData(prev => ({
-      ...prev,
-      activeIncidents: prev.activeIncidents.filter(i => i.id !== incidentId),
-      telemetry: {
-        ...prev.telemetry,
-        activeSosCount: Math.max(0, prev.telemetry.activeSosCount - 1)
-      }
-    }));
+  // Resolve incident via server API
+  const handleResolveIncident = async (incidentId) => {
+    try {
+      await api.post(`/authority/incidents/${incidentId}/resolve`, {
+        reason: 'Resolved from Authority Command Center'
+      });
+    } catch (err) {
+      console.warn('Authority resolve API call failed:', err.message);
+    }
+    setSectorData((prev) => {
+      const remaining = prev.activeIncidents.filter((i) => i.id !== incidentId);
+      return {
+        ...prev,
+        activeIncidents: remaining,
+        telemetry: {
+          ...prev.telemetry,
+          activeSosCount: Math.max(0, (prev.telemetry?.activeSosCount || 1) - 1)
+        }
+      };
+    });
     setSelectedIncident(null);
+  };
+
+  // ANPR patrol broadcast via server API
+  const handleAnprBroadcast = async (item) => {
+    try {
+      await api.post('/authority/anpr/broadcast', {
+        plateNumber: item.plateNumber,
+        reason: item.reason,
+        lat,
+        lng
+      });
+      alert(`Patrol intercept broadcast transmitted for ${item.plateNumber} to all regional units.`);
+    } catch (err) {
+      alert(`Broadcasting intercept coordinates for ${item.plateNumber} to nearest traffic patrol unit!`);
+    }
   };
 
   return (
     <div className="w-full min-h-screen bg-[#F3F4F6] text-slate-900 flex flex-col font-sans select-none antialiased">
+      {/* Realtime Siren & Duress Banner */}
+      {activeSirenAlert && (
+        <div
+          className={`px-6 py-3 flex items-center justify-between z-50 text-white animate-pulse transition-all ${
+            activeSirenAlert.duress ? 'bg-red-700 shadow-lg' : 'bg-[#EA3B52]'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <ShieldAlert className="w-6 h-6 animate-spin" />
+            <div>
+              <span className="font-mono font-black text-sm uppercase tracking-wider block">
+                {activeSirenAlert.duress
+                  ? '🚨 COVERT DURESS ALERT — HOSTAGE / COERCED RESOLUTION'
+                  : 'HIGH PRIORITY SIREN DISPATCH — STEP 4 ESCALATION'}
+              </span>
+              <p className="text-xs text-rose-100">{activeSirenAlert.message}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              className="p-1.5 rounded-lg bg-black/20 hover:bg-black/30 text-white"
+              title={soundEnabled ? 'Mute Siren' : 'Unmute Siren'}
+            >
+              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </button>
+            <button
+              onClick={() => setActiveSirenAlert(null)}
+              className="px-3 py-1 bg-white text-slate-900 rounded-xl text-xs font-bold hover:bg-slate-100"
+            >
+              Acknowledge
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Server Offline / Simulation Fallback Banner */}
+      {isServerOffline && (
+        <div className="bg-amber-500 text-white px-4 py-1.5 text-xs font-semibold text-center flex items-center justify-center gap-2">
+          <WifiOff className="w-3.5 h-3.5" />
+          <span>Server offline — showing simulated sector data. Start backend on port 4000 for live telemetry.</span>
+        </div>
+      )}
+
       {/* 1. TOP HEADER & TELEMETRY BAR */}
       <header className="px-6 py-3 bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-xs flex flex-wrap items-center justify-between gap-4 z-40">
         {/* Brand & Sector */}
@@ -77,7 +310,8 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
               <h1 className="text-base font-medium tracking-tight text-slate-900">
                 Jagrath Authority Command
               </h1>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-[#DE354C] border border-rose-100">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-50 text-[#DE354C] border border-rose-100 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 LIVE SECTOR RADAR
               </span>
             </div>
@@ -87,9 +321,8 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
           </div>
         </div>
 
-        {/* 4 Highlighted Primary Module Buttons (Big, Nice, Prominent Icons) */}
+        {/* 5 Navigation Buttons */}
         <div className="flex items-center gap-2 bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/70">
-          {/* Button 1: Accidents Hotspots */}
           <button
             onClick={() => setActiveView('accidents')}
             className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
@@ -102,7 +335,6 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
             <span>Accidents</span>
           </button>
 
-          {/* Button 2: Vehicle Scanner (License Plate AI) */}
           <button
             onClick={() => setActiveView('anpr')}
             className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
@@ -115,7 +347,6 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
             <span>Vehicle Scanner</span>
           </button>
 
-          {/* Button 3: Ambulances */}
           <button
             onClick={() => setActiveView('fleet')}
             className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
@@ -128,7 +359,6 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
             <span>Ambulances</span>
           </button>
 
-          {/* Button 4: False Cases */}
           <button
             onClick={() => setActiveView('falseCases')}
             className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
@@ -141,7 +371,6 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
             <span>False Cases</span>
           </button>
 
-          {/* Button 5: Live Map */}
           <button
             onClick={() => setActiveView('map')}
             className={`px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all ${
@@ -151,15 +380,14 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
             }`}
           >
             <MapPin className="w-3.5 h-3.5" />
-            <span>Live Map</span>
+            <span>Live Map ({sectorData.activeIncidents?.length || 0})</span>
           </button>
         </div>
 
         {/* Right Action: Radius & Citizen App Switcher */}
         <div className="flex items-center gap-3">
-          {/* Radius selector */}
           <div className="hidden lg:flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold text-slate-600">
-            {[2, 5, 15].map(r => (
+            {[2, 5, 15].map((r) => (
               <button
                 key={r}
                 onClick={() => setRadiusKm(r)}
@@ -197,16 +425,15 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
 
       {/* 2. DEDICATED FULL-VIEW PAGES */}
       <div className="flex-1 p-6 overflow-y-auto no-scrollbar">
-        {/* ========================================================================= */}
-        {/* PAGE 1: ACCIDENTS & HIGH-COLLISION ZONES (Clean, Big, Visually Clear)     */}
-        {/* ========================================================================= */}
+        {/* PAGE 1: ACCIDENTS & HIGH-COLLISION ZONES */}
         {activeView === 'accidents' && (
           <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
-            {/* Top Stat Ribbon */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-card">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Sector Recorded Incidents</span>
-                <span className="text-3xl font-black text-slate-900 font-mono tracking-tight mt-1 block">142</span>
+                <span className="text-3xl font-black text-slate-900 font-mono tracking-tight mt-1 block">
+                  {sectorData.telemetry?.totalIncidentsAnalyzed || 142}
+                </span>
                 <span className="text-xs font-medium text-emerald-600 mt-1 block">Analyzed across sector checkpoints</span>
               </div>
               <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-card">
@@ -220,20 +447,20 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                 <span className="text-xs font-medium text-slate-500 mt-1 block">2-wheelers overtaking heavy freight</span>
               </div>
               <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-card">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Emergency Response Time</span>
-                <span className="text-3xl font-black text-emerald-600 font-mono mt-1 block">04m 18s</span>
-                <span className="text-xs font-medium text-emerald-600 mt-1 block">Following Jagrath rapid patrol staging</span>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Active SOS Signals</span>
+                <span className="text-3xl font-black text-rose-600 font-mono mt-1 block">
+                  {sectorData.activeIncidents?.length || 0}
+                </span>
+                <span className="text-xs font-medium text-slate-500 mt-1 block">Real-time citizen emergencies</span>
               </div>
             </div>
 
-            {/* Main Split: Visual Hotspots List + Map Preview */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Left Column: Top 5 Collision Corridors */}
               <div className="lg:col-span-7 space-y-3">
                 <div className="flex items-center justify-between pb-1">
                   <div>
                     <h2 className="text-lg font-black text-slate-900">
-                      Top 5 High-Collision Corridors
+                      Top High-Collision Corridors
                     </h2>
                     <p className="text-xs text-slate-500">
                       Ranked by historical crash frequency and severity across sector radar
@@ -245,7 +472,7 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                 </div>
 
                 <div className="space-y-3">
-                  {sectorData.accidentHotspots.map((spot, idx) => (
+                  {(sectorData.accidentHotspots || []).map((spot, idx) => (
                     <div
                       key={spot.id}
                       className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-card hover:border-[#EA3B52]/40 transition-all"
@@ -256,9 +483,7 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                             {idx + 1}
                           </span>
                           <div>
-                            <h3 className="text-base font-bold text-slate-900">
-                              {spot.name}
-                            </h3>
+                            <h3 className="text-base font-bold text-slate-900">{spot.name}</h3>
                             <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200 inline-block mt-1">
                               Peak Window: {spot.peakHours}
                             </span>
@@ -275,17 +500,13 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                         </div>
                       </div>
 
-                      {/* Primary Cause - Crystal Clear, No Wall of Text */}
                       <div className="mt-3.5 p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between text-xs">
                         <span className="text-slate-700 font-medium">
                           <strong>Cause:</strong> {spot.primaryCause}
                         </span>
-                        <span className="text-xs font-bold text-slate-500 font-mono">
-                          {spot.trend}
-                        </span>
+                        <span className="text-xs font-bold text-slate-500 font-mono">{spot.trend}</span>
                       </div>
 
-                      {/* Visual Danger Severity Bar */}
                       <div className="mt-3 flex items-center gap-3">
                         <div className="flex-1 bg-slate-100 h-2 rounded-full overflow-hidden">
                           <div
@@ -302,7 +523,6 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                 </div>
               </div>
 
-              {/* Right Column: Interactive Map Preview + Action */}
               <div className="lg:col-span-5 flex flex-col gap-4">
                 <div className="w-full h-[460px] bg-white rounded-3xl border border-slate-200/80 shadow-card overflow-hidden relative">
                   <AuthorityMap
@@ -313,6 +533,8 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                     ambulances={sectorData.ambulanceFleet}
                     blindSpot={sectorData.coverageBlindSpot}
                     displacementPlan={sectorData.displacementPlan}
+                    onSelectIncident={(inc) => setSelectedIncident(inc)}
+                    selectedIncidentId={selectedIncident?.id}
                   />
                 </div>
 
@@ -322,7 +544,8 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                     AI Road Safety Action
                   </h4>
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    Deploy speed radar warning signage and high-output LED floodlights at <strong>Bull Temple Junction</strong> before 21:30 to mitigate night collision surges.
+                    Deploy speed radar warning signage and high-output LED floodlights at{' '}
+                    <strong>Bull Temple Junction</strong> before 21:30 to mitigate night collision surges.
                   </p>
                 </div>
               </div>
@@ -330,12 +553,9 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
           </div>
         )}
 
-        {/* ========================================================================= */}
-        {/* PAGE 2: VEHICLE SCANNER (ANPR & HIT-AND-RUN DETECTION)                    */}
-        {/* ========================================================================= */}
+        {/* PAGE 2: VEHICLE SCANNER (ANPR) */}
         {activeView === 'anpr' && (
           <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
-            {/* Top Stat Ribbon */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-card">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Vehicles Scanned Today</span>
@@ -359,19 +579,18 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
               </div>
             </div>
 
-            {/* Detections List */}
             <div className="space-y-4">
               <div>
                 <h2 className="text-lg font-black text-slate-900">
                   Real-Time Vehicle Scanner Detections
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Continuous high-speed optical recognition scanning all transit intersections
+                  Continuous optical recognition scanning transit intersections for hit-and-runs and corridor blockages
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {sectorData.licensePlateDetections.map((item) => (
+                {(sectorData.licensePlateDetections || []).map((item) => (
                   <div
                     key={item.id}
                     className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-card flex flex-col justify-between"
@@ -382,23 +601,23 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                           <span className="font-mono text-xl font-black text-slate-900 tracking-wider bg-slate-100 px-3 py-1 rounded-xl border border-slate-200 inline-block">
                             {item.plateNumber}
                           </span>
-                          <h4 className="text-sm font-bold text-slate-800 mt-2">
-                            {item.vehicleModel}
-                          </h4>
+                          <h4 className="text-sm font-bold text-slate-800 mt-2">{item.vehicleModel}</h4>
                           <p className="text-xs text-slate-500">
                             {item.locationName} • Speed: <strong>{item.speedKmh} km/h</strong> • {item.timestamp}
                           </p>
                         </div>
 
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold flex-shrink-0 ${
-                          item.alertType === 'CRITICAL'
-                            ? 'bg-rose-50 text-[#EA3B52] border border-rose-200 animate-pulse'
-                            : item.alertType === 'WARNING'
-                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                            : item.alertType === 'ALERT'
-                            ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        }`}>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-bold flex-shrink-0 ${
+                            item.alertType === 'CRITICAL'
+                              ? 'bg-rose-50 text-[#EA3B52] border border-rose-200 animate-pulse'
+                              : item.alertType === 'WARNING'
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                              : item.alertType === 'ALERT'
+                              ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          }`}
+                        >
                           {item.status}
                         </span>
                       </div>
@@ -409,10 +628,12 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                     </div>
 
                     <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                      <span className="text-slate-400 font-mono">Confidence: <strong>{item.confidence}</strong></span>
+                      <span className="text-slate-400 font-mono">
+                        Confidence: <strong>{item.confidence}</strong>
+                      </span>
                       {item.alertType !== 'NORMAL' && (
                         <button
-                          onClick={() => alert(`Broadcasting intercept coordinates for ${item.plateNumber} to nearest traffic patrol unit!`)}
+                          onClick={() => handleAnprBroadcast(item)}
                           className="px-3.5 py-1.5 bg-[#EA3B52] hover:bg-[#d92d44] text-white rounded-xl font-bold shadow-2xs active:scale-95 transition-all"
                         >
                           Dispatch Patrol Intercept
@@ -426,77 +647,73 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
           </div>
         )}
 
-        {/* ========================================================================= */}
-        {/* PAGE 3: AMBULANCES & SECTOR DISPATCH OPTIMIZATION                         */}
-        {/* ========================================================================= */}
+        {/* PAGE 3: AMBULANCES & FLEET DISPATCH */}
         {activeView === 'fleet' && (
           <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn">
-            {/* Top Clean Comparison Card: Before vs After */}
-            <div className="p-6 bg-white rounded-3xl border border-slate-200/80 shadow-card">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#EA3B52] bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200">
-                    Ambulance Dispatch Optimization
+            {sectorData.displacementPlan && (
+              <div className="p-6 bg-white rounded-3xl border border-slate-200/80 shadow-card">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#EA3B52] bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200">
+                      Ambulance Dispatch Optimization
+                    </span>
+                    <h2 className="text-2xl font-black text-slate-900 mt-2">
+                      {sectorData.displacementPlan.actionTitle}
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-1 max-w-xl leading-relaxed">
+                      Outer Ring Junction currently has zero idle ambulances. Staging 2 units from low-demand depots cuts projected emergency arrival times by 7.2 minutes.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-3xl border border-slate-200 flex-shrink-0">
+                    <div className="text-center px-3">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Current ETA</span>
+                      <span className="text-2xl font-black text-[#EA3B52] font-mono">
+                        {sectorData.displacementPlan.currentEta}
+                      </span>
+                    </div>
+
+                    <ArrowRight className="w-5 h-5 text-slate-400" />
+
+                    <div className="text-center px-3">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">AI Rebalanced</span>
+                      <span className="text-2xl font-black text-emerald-600 font-mono">
+                        {sectorData.displacementPlan.optimizedEta}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200">
+                    ✓ {sectorData.displacementPlan.timeSaved}
                   </span>
-                  <h2 className="text-2xl font-black text-slate-900 mt-2">
-                    {sectorData.displacementPlan.actionTitle}
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-1 max-w-xl leading-relaxed">
-                    Outer Ring Junction currently has zero idle ambulances. Staging 2 units from low-demand depots cuts projected emergency arrival times by 7.2 minutes.
-                  </p>
-                </div>
 
-                {/* Big Clean Before / After Numbers */}
-                <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-3xl border border-slate-200 flex-shrink-0">
-                  <div className="text-center px-3">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Current ETA</span>
-                    <span className="text-2xl font-black text-[#EA3B52] font-mono">
-                      {sectorData.displacementPlan.currentEta}
-                    </span>
-                  </div>
-
-                  <ArrowRight className="w-5 h-5 text-slate-400" />
-
-                  <div className="text-center px-3">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">AI Rebalanced</span>
-                    <span className="text-2xl font-black text-emerald-600 font-mono">
-                      {sectorData.displacementPlan.optimizedEta}
-                    </span>
-                  </div>
+                  {!sectorData.displacementPlan.isExecuted ? (
+                    <button
+                      onClick={handleAuthorizeDisplacement}
+                      className="px-6 py-3.5 bg-[#EA3B52] hover:bg-[#d92d44] text-white font-bold rounded-2xl text-xs flex items-center gap-2 shadow-sm transition-transform active:scale-98"
+                    >
+                      <span>Authorize Ambulance Relocation</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <div className="px-5 py-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs font-bold flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>2 ALS Ambulances Dispatched to Outer Ring Junction!</span>
+                    </div>
+                  )}
                 </div>
               </div>
+            )}
 
-              {/* One Clear Primary Action Button */}
-              <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200">
-                  ✓ {sectorData.displacementPlan.timeSaved}
-                </span>
-
-                {!sectorData.displacementPlan.isExecuted ? (
-                  <button
-                    onClick={handleAuthorizeDisplacement}
-                    className="px-6 py-3.5 bg-[#EA3B52] hover:bg-[#d92d44] text-white font-bold rounded-2xl text-xs flex items-center gap-2 shadow-sm transition-transform active:scale-98"
-                  >
-                    <span>Authorize Ambulance Relocation</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                ) : (
-                  <div className="px-5 py-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs font-bold flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>2 ALS Ambulances Dispatched to Outer Ring Junction!</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Stationed Ambulance Fleet Grid */}
             <div>
               <h3 className="text-lg font-black text-slate-900 mb-3">
-                All Stationed Sector Ambulances ({sectorData.ambulanceFleet.length} Units)
+                All Stationed Sector Ambulances ({(sectorData.ambulanceFleet || []).length} Units)
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {sectorData.ambulanceFleet.map(amb => (
+                {(sectorData.ambulanceFleet || []).map((amb) => (
                   <div key={amb.id} className="p-5 bg-white rounded-3xl border border-slate-200/80 shadow-card space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
@@ -508,11 +725,13 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                           <p className="text-[11px] text-slate-400">{amb.type}</p>
                         </div>
                       </div>
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                        amb.status === 'Ready'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-rose-50 text-rose-700 border border-rose-200'
-                      }`}>
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                          amb.status === 'Ready'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-rose-50 text-rose-700 border border-rose-200'
+                        }`}
+                      >
                         {amb.status}
                       </span>
                     </div>
@@ -529,24 +748,19 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
           </div>
         )}
 
-        {/* ========================================================================= */}
-        {/* PAGE 4: FALSE CASES AUDIT (Clean, Simple, User-Friendly)                  */}
-        {/* ========================================================================= */}
+        {/* PAGE 4: FALSE CASES AUDIT */}
         {activeView === 'falseCases' && (
           <div className="max-w-6xl mx-auto space-y-6 animate-fadeIn text-left">
-            {/* Header Description */}
             <div className="pb-1">
               <h2 className="text-xl font-black text-slate-900 tracking-tight">
                 False Alarm Prevention & Incident Audit
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Sector verification breakdown of {sectorData.falseCaseStats.totalCitywideAlerts} monthly emergency signals
+                Sector verification breakdown of {sectorData.falseCaseStats?.totalCitywideAlerts || 1420} monthly emergency signals
               </p>
             </div>
 
-            {/* 3 Simple, Clean Metric Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Confirmed Real */}
               <div className="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Real Emergencies</span>
@@ -554,7 +768,7 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                 </div>
                 <div className="mt-3 flex items-baseline gap-2">
                   <span className="text-3xl font-black text-slate-900 font-mono">
-                    {sectorData.falseCaseStats.confirmedEmergenciesCount}
+                    {sectorData.falseCaseStats?.confirmedEmergenciesCount || 1099}
                   </span>
                   <span className="text-xs font-bold text-emerald-600">77.4%</span>
                 </div>
@@ -563,7 +777,6 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                 </p>
               </div>
 
-              {/* 5-Sec Buffer Aborts */}
               <div className="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Cancelled in 5s Buffer</span>
@@ -571,7 +784,7 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                 </div>
                 <div className="mt-3 flex items-baseline gap-2">
                   <span className="text-3xl font-black text-slate-900 font-mono">
-                    {sectorData.falseCaseStats.cancelledInBufferCount}
+                    {sectorData.falseCaseStats?.cancelledInBufferCount || 254}
                   </span>
                   <span className="text-xs font-bold text-amber-600">17.9%</span>
                 </div>
@@ -580,7 +793,6 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                 </p>
               </div>
 
-              {/* Field False Alarms */}
               <div className="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Field-Verified False</span>
@@ -588,7 +800,7 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                 </div>
                 <div className="mt-3 flex items-baseline gap-2">
                   <span className="text-3xl font-black text-slate-900 font-mono">
-                    {sectorData.falseCaseStats.fieldFalseAlarmsCount}
+                    {sectorData.falseCaseStats?.fieldFalseAlarmsCount || 67}
                   </span>
                   <span className="text-xs font-bold text-slate-600">4.7%</span>
                 </div>
@@ -598,107 +810,27 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
               </div>
             </div>
 
-            {/* Public Resource Savings Highlight */}
             <div className="p-4 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-700">
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-emerald-950">
-                    Emergency Resource Protection
-                  </h3>
+                  <h3 className="text-xs font-bold text-emerald-950">Emergency Resource Protection</h3>
                   <p className="text-[11px] text-emerald-800 mt-0.5">
-                    The 5-second cancel window prevented {sectorData.falseCaseStats.cancelledInBufferCount} false sirens, saving an estimated {sectorData.falseCaseStats.hoursSavedByBuffer} of public responder time.
+                    The 5-second cancel window prevented {sectorData.falseCaseStats?.cancelledInBufferCount || 254} false sirens, saving an estimated{' '}
+                    {sectorData.falseCaseStats?.hoursSavedByBuffer || '128 hrs'} of public responder time.
                   </p>
                 </div>
               </div>
               <span className="px-3 py-1 bg-white text-emerald-800 font-mono text-xs font-black rounded-lg border border-emerald-200 shadow-2xs whitespace-nowrap self-end sm:self-center">
-                {sectorData.falseCaseStats.hoursSavedByBuffer} Saved
+                {sectorData.falseCaseStats?.hoursSavedByBuffer || '128 hrs'} Saved
               </span>
-            </div>
-
-            {/* Simple, Clean Recent Incident Audit Log */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-              <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                  Recent Incident Verification Audits
-                </h4>
-                <span className="text-[11px] text-slate-400 font-medium">Last 24 Hours</span>
-              </div>
-
-              <div className="divide-y divide-slate-100 text-xs">
-                <div className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50/60 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                    <div>
-                      <span className="font-mono font-bold text-slate-800">INC-892401</span>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Near DVG Road Junction • Trauma Collision</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      Real Incident
-                    </span>
-                    <span className="text-[11px] text-slate-400 hidden sm:inline">Ambulance Dispatched</span>
-                  </div>
-                </div>
-
-                <div className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50/60 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <span className="w-2 h-2 rounded-full bg-amber-500" />
-                    <div>
-                      <span className="font-mono font-bold text-slate-800">INC-892398</span>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Sector 3 Bus Terminal • Pocket Friction Touch</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                      Buffer Cancelled
-                    </span>
-                    <span className="text-[11px] text-slate-400 hidden sm:inline">Aborted within 3.8s</span>
-                  </div>
-                </div>
-
-                <div className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50/60 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <span className="w-2 h-2 rounded-full bg-amber-500" />
-                    <div>
-                      <span className="font-mono font-bold text-slate-800">INC-892391</span>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Gandhi Bazaar Main Rd • Accidental Screen Tap</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                      Buffer Cancelled
-                    </span>
-                    <span className="text-[11px] text-slate-400 hidden sm:inline">PIN verified abort</span>
-                  </div>
-                </div>
-
-                <div className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50/60 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <span className="w-2 h-2 rounded-full bg-slate-400" />
-                    <div>
-                      <span className="font-mono font-bold text-slate-800">INC-892385</span>
-                      <p className="text-[11px] text-slate-500 mt-0.5">Ashok Nagar 2nd Block • Phone Dropped</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                      Field Resolved
-                    </span>
-                    <span className="text-[11px] text-slate-400 hidden sm:inline">Patrol verified safe</span>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         )}
 
-        {/* ========================================================================= */}
-        {/* PAGE 5: FULL-SCREEN INTERACTIVE MAP                                       */}
-        {/* ========================================================================= */}
+        {/* PAGE 5: FULL-SCREEN INTERACTIVE MAP */}
         {activeView === 'map' && (
           <div className="w-full h-[calc(100vh-120px)] bg-white rounded-3xl border border-slate-200/80 shadow-card overflow-hidden relative animate-fadeIn">
             <AuthorityMap
@@ -721,7 +853,7 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
         <IncidentInspectDrawer
           incident={selectedIncident}
           onClose={() => setSelectedIncident(null)}
-          onDirect112={() => alert("Direct 112 Police/Ambulance Bridge Dispatched with Verified Telemetry!")}
+          onDirect112={() => alert('Direct 112 Police/Ambulance Bridge Dispatched with Verified Telemetry!')}
           onResolveIncident={handleResolveIncident}
         />
       )}
