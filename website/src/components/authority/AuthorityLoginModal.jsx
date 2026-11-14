@@ -1,24 +1,69 @@
 import React, { useState } from 'react';
-import { Shield, MapPin, Key, Lock, Navigation, ArrowRight, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Shield, MapPin, Key, Lock, Navigation, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
+import { api, authStorage } from '../../services/api';
+import { socketService } from '../../services/socket';
 
 export default function AuthorityLoginModal({ onAuthorizeLocation, onClose }) {
   const [badgeId, setBadgeId] = useState("BLR-OPS-892");
-  const [password, setPassword] = useState("••••••••");
+  const [password, setPassword] = useState("");
   const [stage, setStage] = useState('badge'); // 'badge' | 'geo'
   const [isLocating, setIsLocating] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState("");
   const [geoError, setGeoError] = useState("");
 
   const handleBadgeSubmit = (e) => {
     e?.preventDefault();
+    setLoginError("");
     if (!badgeId.trim()) {
-      alert("Please enter a valid Officer Badge ID.");
+      setLoginError("Please enter a valid Officer Badge ID.");
       return;
     }
     if (!password.trim()) {
-      alert("Please enter your Station Password / PIN.");
+      setLoginError("Please enter your Station Password / PIN.");
       return;
     }
     setStage('geo');
+  };
+
+  const performLogin = async (coords) => {
+    setIsLoading(true);
+    setLoginError("");
+    try {
+      const data = await api.post('/auth/authority/login', {
+        badgeId: badgeId.trim(),
+        password: password.trim(),
+        lat: coords.lat,
+        lng: coords.lng
+      });
+
+      if (data?.token) {
+        authStorage.setToken(data.token);
+        if (data.officer) {
+          authStorage.setOfficer(data.officer);
+        }
+        // Connect WebSocket with new token
+        socketService.connect();
+
+        onAuthorizeLocation({
+          ...coords,
+          badgeId: data.officer?.badgeId || badgeId,
+          officer: data.officer,
+          isLiveServer: true
+        });
+      } else {
+        throw new Error('Invalid response received from server.');
+      }
+    } catch (err) {
+      console.warn('Authority login error:', err);
+      const msg = err.code === 'TIMEOUT'
+        ? 'Authentication request timed out. Server might be offline.'
+        : (err.message || 'Authentication failed. Please verify Badge ID and Password.');
+      setLoginError(msg);
+      setStage('badge');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleRequestLocation = () => {
@@ -27,50 +72,56 @@ export default function AuthorityLoginModal({ onAuthorizeLocation, onClose }) {
 
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
+        async (pos) => {
           setIsLocating(false);
-          onAuthorizeLocation({
+          const coords = {
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
-            accuracy: pos.coords.accuracy || 10,
-            badgeId
-          });
+            accuracy: pos.coords.accuracy || 10
+          };
+          await performLogin(coords);
         },
-        (err) => {
+        async (err) => {
           setIsLocating(false);
-          // Fallback to Bengaluru South Command coordinates
-          setGeoError("Location access unavailable or timed out. Falling back to Station Coordinates (Bengaluru South).");
-          setTimeout(() => {
-            onAuthorizeLocation({
-              lat: 12.9352,
-              lng: 77.5358,
-              accuracy: 15,
-              badgeId,
-              isFallback: true
-            });
-          }, 1200);
+          setGeoError("GPS fix unavailable. Falling back to Bengaluru South Command Coordinates.");
+          const coords = {
+            lat: 12.9352,
+            lng: 77.5358,
+            accuracy: 15,
+            isFallback: true
+          };
+          await performLogin(coords);
         },
         { timeout: 8000, enableHighAccuracy: true }
       );
     } else {
       setIsLocating(false);
-      onAuthorizeLocation({
+      performLogin({
         lat: 12.9352,
         lng: 77.5358,
         accuracy: 15,
-        badgeId,
         isFallback: true
       });
     }
   };
 
   const handleUseStationCoords = () => {
+    performLogin({
+      lat: 12.9352,
+      lng: 77.5358,
+      accuracy: 15,
+      isFallback: true
+    });
+  };
+
+  const handleOfflineSimulatedMode = () => {
     onAuthorizeLocation({
       lat: 12.9352,
       lng: 77.5358,
       accuracy: 15,
-      badgeId,
-      isFallback: true
+      badgeId: badgeId || "BLR-OPS-892",
+      isFallback: true,
+      isOfflineSimulated: true
     });
   };
 
@@ -93,6 +144,13 @@ export default function AuthorityLoginModal({ onAuthorizeLocation, onClose }) {
             <p className="text-[14px] text-slate-500 font-normal mt-1 leading-relaxed">
               Authorized surveillance, regional ambulance dispatch, and accident analytics portal.
             </p>
+
+            {loginError && (
+              <div className="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2 text-rose-700 text-xs">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span>{loginError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleBadgeSubmit} className="mt-5 space-y-4">
               <div>
@@ -123,7 +181,7 @@ export default function AuthorityLoginModal({ onAuthorizeLocation, onClose }) {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter station access PIN"
+                    placeholder="Enter station access password"
                     className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-3 py-3 text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#EA3B52]"
                   />
                 </div>
@@ -132,12 +190,25 @@ export default function AuthorityLoginModal({ onAuthorizeLocation, onClose }) {
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-3.5 bg-[#EA3B52] hover:bg-[#d92d44] text-white font-bold rounded-2xl text-xs flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-98"
+                  disabled={isLoading}
+                  className="w-full py-3.5 bg-[#EA3B52] hover:bg-[#d92d44] text-white font-bold rounded-2xl text-xs flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-98 disabled:opacity-60"
                 >
                   <span>Authenticate & Continue</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
+
+              {loginError && (
+                <div className="pt-1 text-center">
+                  <button
+                    type="button"
+                    onClick={handleOfflineSimulatedMode}
+                    className="text-xs text-slate-500 hover:text-slate-800 underline font-medium"
+                  >
+                    Continue in Simulated Offline Mode
+                  </button>
+                </div>
+              )}
             </form>
           </div>
         )}
@@ -167,17 +238,18 @@ export default function AuthorityLoginModal({ onAuthorizeLocation, onClose }) {
               <button
                 type="button"
                 onClick={handleRequestLocation}
-                disabled={isLocating}
-                className="w-full py-3.5 bg-[#EA3B52] hover:bg-[#d92d44] text-white font-bold rounded-2xl text-xs flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-98"
+                disabled={isLocating || isLoading}
+                className="w-full py-3.5 bg-[#EA3B52] hover:bg-[#d92d44] text-white font-bold rounded-2xl text-xs flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-98 disabled:opacity-60"
               >
-                <Navigation className={`w-4 h-4 ${isLocating ? 'animate-spin' : ''}`} />
-                <span>{isLocating ? 'Acquiring GPS Fix...' : 'Grant Device GPS Permission'}</span>
+                <Navigation className={`w-4 h-4 ${isLocating || isLoading ? 'animate-spin' : ''}`} />
+                <span>{isLoading ? 'Verifying with Command Server...' : (isLocating ? 'Acquiring GPS Fix...' : 'Grant Device GPS & Connect')}</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleUseStationCoords}
-                className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-2xl text-[11px] font-semibold border border-slate-200 transition-colors"
+                disabled={isLoading}
+                className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-2xl text-[11px] font-semibold border border-slate-200 transition-colors disabled:opacity-60"
               >
                 Use Station Coords (Bengaluru South)
               </button>

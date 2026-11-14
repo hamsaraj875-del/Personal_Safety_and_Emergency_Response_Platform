@@ -9,3 +9,5 @@ build
 .next
 .gradle
 local.properties
+.idea
+*.iml

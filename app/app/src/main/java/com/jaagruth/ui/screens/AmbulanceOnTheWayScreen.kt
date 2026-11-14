@@ -61,6 +61,7 @@ import com.jaagruth.model.SafetyHub
 import com.jaagruth.model.VerifiedResponder
 import com.jaagruth.theme.Amber400
 import com.jaagruth.theme.Emerald500
+import com.jaagruth.theme.JagrathCrimson
 import com.jaagruth.theme.JagrathDarkRed
 import com.jaagruth.theme.JagrathDeepRed
 import com.jaagruth.theme.JagrathPrimaryRed
