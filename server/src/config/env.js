@@ -33,4 +33,12 @@ if (!parsed.success) {
   process.exit(1);
 }
 
+if (parsed.data.NODE_ENV === 'production') {
+  const secret = parsed.data.JWT_SECRET;
+  if (secret.length < 32 || /placeholder|change.?me|default|example|secret123/i.test(secret)) {
+    console.error('Environment configuration error: production JWT_SECRET must be at least 32 characters and must not be a default or placeholder.');
+    process.exit(1);
+  }
+}
+
 export const env = parsed.data;

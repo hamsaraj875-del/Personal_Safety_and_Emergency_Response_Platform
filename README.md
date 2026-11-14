@@ -64,23 +64,39 @@ $$H_n = \text{SHA-256}(H_{n-1} \parallel \text{timestamp} \parallel \text{actor\
 
 ---
 
-## ⚡ Quick Start & Running Locally
+## Quick Start (server, website, Android)
+
+Prerequisites: Node.js 20+, Java 17, Android SDK 35/36, MongoDB access, and a configured Maps key if map tiles are needed.
+
+### Server
 
 ```bash
-# Clone the repository
-git clone https://github.com/hamsaraj875-del/Personal_Safety_and_Emergency_Response_Platform.git
-cd Personal_Safety_and_Emergency_Response_Platform
-
-# Install dependencies
-npm install
-
-# Start development server
+cd server
+cp .env.example .env
+# Set MONGODB_URI, a unique JWT_SECRET (32+ chars for production), and CORS_ORIGINS
+npm ci
 npm run dev
 ```
 
-Visit `http://localhost:3000` in your browser.
+The API is at `http://localhost:4000/api/v1`; health is `http://localhost:4000/health`. Seeded demo data is controlled by `SEED_DEMO`.
 
----
+### Website
+
+```bash
+cd website
+npm ci
+cp .env.example .env.local
+# Set VITE_API_BASE_URL and VITE_WS_URL if not using the local defaults
+npm run dev
+```
+
+Vite serves the website at `http://localhost:3000`.
+
+### Android
+
+Open `app/` in Android Studio, configure `jaagruth.baseUrl` and `jaagruth.wsUrl` in `app/local.properties` for your server, then run the `app` configuration on an emulator or device. Emulator defaults target `10.0.2.2`; physical devices need a reachable HTTPS URL or LAN address. To build and test: `cd app && ./gradlew testDebugUnitTest assembleDebug`.
+
+Never commit `.env`, `.env.local`, or `local.properties`. See `server/README.md` and `app/README.md` for setup detail.
 
 ## 🏆 3-Minute Demo Flow for Hackathon Judges
 1. **0:00 - 0:30**: Open Home Screen. Explain the 2-second hold-for-SOS to prevent pocket dials. Trigger SOS and show the 5-second amber cancel window.
