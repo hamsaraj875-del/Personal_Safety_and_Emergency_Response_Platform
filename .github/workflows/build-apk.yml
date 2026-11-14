@@ -22,11 +22,16 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Set up Gradle Cache
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Grant Execute Permission to Gradlew
-        run: chmod +x app/gradlew
+      - name: Prepare Gradlew Permissions & Line Endings
+        run: |
+          sed -i 's/\r$//' app/gradlew
+          chmod +x app/gradlew
 
       - name: Build Debug APK
         working-directory: ./app
