@@ -6,7 +6,7 @@ import { AppError } from '../middleware/error.js';
 import { Contact } from '../models/Contact.js';
 
 const router = express.Router();
-router.use(authenticate);
+router.use('/contacts', authenticate);
 
 const createContactSchema = z.object({
   name: z.string().min(2),

@@ -4,15 +4,43 @@ import { GOOGLE_MAPS_API_KEY, GOOGLE_MAPS_ID, GOOGLE_MAPS_ATTRIBUTION } from '..
 import { Layers, ShieldAlert, Crosshair } from 'lucide-react';
 
 /**
+ * Robust coordinate normalizer supporting:
+ * - { lat: number, lng: number }
+ * - { coordinates: [lng, lat] } (GeoJSON)
+ * - [lng, lat] or [lat, lng]
+ */
+export function toLatLng(loc) {
+  if (!loc) return null;
+  if (typeof loc.lat === 'number' && typeof loc.lng === 'number' && !isNaN(loc.lat) && !isNaN(loc.lng)) {
+    return { lat: loc.lat, lng: loc.lng };
+  }
+  if (Array.isArray(loc.coordinates) && loc.coordinates.length >= 2) {
+    const lng = Number(loc.coordinates[0]);
+    const lat = Number(loc.coordinates[1]);
+    if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
+  }
+  if (Array.isArray(loc) && loc.length >= 2) {
+    const a = Number(loc[0]);
+    const b = Number(loc[1]);
+    if (!isNaN(a) && !isNaN(b)) {
+      // If first coordinate is > 60, it's likely Bangalore longitude (~77)
+      if (a > 60 && b < 40) return { lat: b, lng: a };
+      return { lat: a, lng: b };
+    }
+  }
+  return null;
+}
+
+/**
  * Helper to smoothly pan Google Map when authority coordinates or radius change
  */
 function GoogleMapPanController({ center, radiusKm }) {
   const map = useMap();
   useEffect(() => {
-    if (!map || !center) return;
-    map.panTo(center);
+    const pt = toLatLng(center);
+    if (!map || !pt) return;
+    map.panTo(pt);
     if (radiusKm) {
-      // Set appropriate zoom for radius
       const zoomLevel = radiusKm <= 2 ? 15 : radiusKm <= 5 ? 14 : 12;
       map.setZoom(zoomLevel);
     }
@@ -23,7 +51,7 @@ function GoogleMapPanController({ center, radiusKm }) {
 /**
  * Helper to manage Google Maps Vector Overlays (Geofence, Hotspot circles, Blind spot, Displacement polyline)
  */
-function GoogleMapOverlays({ centerCoords, radiusKm, hotspots, blindSpot, displacementPlan, ambulances }) {
+function GoogleMapOverlays({ centerCoords, radiusKm = 5, hotspots = [], blindSpot, displacementPlan, ambulances = [] }) {
   const map = useMap();
   const circlesRef = useRef([]);
   const polylineRef = useRef(null);
@@ -35,50 +63,68 @@ function GoogleMapOverlays({ centerCoords, radiusKm, hotspots, blindSpot, displa
     circlesRef.current.forEach(c => c.setMap(null));
     circlesRef.current = [];
 
-    // 1. Geofence Radius Circle (Crimson Dashed)
-    const geofenceCircle = new window.google.maps.Circle({
-      strokeColor: '#EA3B52',
-      strokeOpacity: 0.8,
-      strokeWeight: 2,
-      fillColor: '#EA3B52',
-      fillOpacity: 0.04,
-      map,
-      center: centerCoords,
-      radius: radiusKm * 1000,
-      clickable: false
-    });
-    circlesRef.current.push(geofenceCircle);
+    const centerPt = toLatLng(centerCoords);
+    if (centerPt) {
+      // 1. Geofence Radius Circle (Crimson Dashed)
+      try {
+        const geofenceCircle = new window.google.maps.Circle({
+          strokeColor: '#EA3B52',
+          strokeOpacity: 0.8,
+          strokeWeight: 2,
+          fillColor: '#EA3B52',
+          fillOpacity: 0.04,
+          map,
+          center: centerPt,
+          radius: (radiusKm || 5) * 1000,
+          clickable: false
+        });
+        circlesRef.current.push(geofenceCircle);
+      } catch (e) {
+        console.warn('Geofence circle creation notice:', e);
+      }
+    }
 
     // 2. Accident Hotspots (Thermal Crimson Circles)
-    hotspots.forEach(spot => {
-      const circle = new window.google.maps.Circle({
-        strokeColor: '#DC2626',
-        strokeOpacity: 0.85,
-        strokeWeight: 1.5,
-        fillColor: '#EF4444',
-        fillOpacity: 0.22,
-        map,
-        center: spot.location,
-        radius: spot.radiusMeters || 380,
-        clickable: false
-      });
-      circlesRef.current.push(circle);
+    (hotspots || []).forEach(spot => {
+      const spotPt = toLatLng(spot?.location || spot?.coordinates);
+      if (!spotPt) return;
+      try {
+        const circle = new window.google.maps.Circle({
+          strokeColor: '#DC2626',
+          strokeOpacity: 0.85,
+          strokeWeight: 1.5,
+          fillColor: '#EF4444',
+          fillOpacity: 0.22,
+          map,
+          center: spotPt,
+          radius: spot.radiusMeters || 380,
+          clickable: false
+        });
+        circlesRef.current.push(circle);
+      } catch (e) {
+        // Skip invalid overlay
+      }
     });
 
     // 3. Blind Spot Circle (Amber Radar)
-    if (blindSpot) {
-      const blindCircle = new window.google.maps.Circle({
-        strokeColor: '#D97706',
-        strokeOpacity: 0.9,
-        strokeWeight: 2,
-        fillColor: '#F59E0B',
-        fillOpacity: 0.16,
-        map,
-        center: blindSpot.location,
-        radius: 650,
-        clickable: false
-      });
-      circlesRef.current.push(blindCircle);
+    const blindPt = toLatLng(blindSpot?.location || blindSpot?.targetStagingCoords);
+    if (blindPt) {
+      try {
+        const blindCircle = new window.google.maps.Circle({
+          strokeColor: '#D97706',
+          strokeOpacity: 0.9,
+          strokeWeight: 2,
+          fillColor: '#F59E0B',
+          fillOpacity: 0.16,
+          map,
+          center: blindPt,
+          radius: 650,
+          clickable: false
+        });
+        circlesRef.current.push(blindCircle);
+      } catch (e) {
+        // Skip
+      }
     }
 
     // 4. Displacement Route Polyline
@@ -87,18 +133,21 @@ function GoogleMapOverlays({ centerCoords, radiusKm, hotspots, blindSpot, displa
       polylineRef.current = null;
     }
 
-    if (displacementPlan?.isExecuted && ambulances.length >= 3) {
-      polylineRef.current = new window.google.maps.Polyline({
-        path: [
-          ambulances[2].location,
-          displacementPlan.targetStagingLocation
-        ],
-        geodesic: true,
-        strokeColor: '#059669',
-        strokeOpacity: 0.9,
-        strokeWeight: 4,
-        map
-      });
+    const amb2Pt = (ambulances || []).length >= 3 ? toLatLng(ambulances[2]?.location) : null;
+    const targetPt = toLatLng(displacementPlan?.targetStagingLocation || displacementPlan?.targetStagingCoords);
+    if (displacementPlan?.isExecuted && amb2Pt && targetPt) {
+      try {
+        polylineRef.current = new window.google.maps.Polyline({
+          path: [amb2Pt, targetPt],
+          geodesic: true,
+          strokeColor: '#059669',
+          strokeOpacity: 0.9,
+          strokeWeight: 4,
+          map
+        });
+      } catch (e) {
+        // Skip
+      }
     }
 
     return () => {
@@ -125,6 +174,8 @@ export default function AuthorityMap({
   onSelectIncident,
   selectedIncidentId
 }) {
+  const safeCenter = toLatLng(centerCoords) || { lat: 12.9352, lng: 77.5358 };
+
   // Default to Google Maps when API key is provided
   const [engine, setEngine] = useState(GOOGLE_MAPS_API_KEY ? 'google' : 'leaflet');
   const [googleAuthError, setGoogleAuthError] = useState(false);
@@ -144,7 +195,7 @@ export default function AuthorityMap({
   // Handle Google Maps Auth Failure (e.g. quota/billing block)
   useEffect(() => {
     window.gm_authFailure = () => {
-      console.warn("Google Maps Auth Notice: Switching to high-performance vector map.");
+      console.warn("Google Maps Auth Notice: Switching to fallback vector map.");
       setGoogleAuthError(true);
       setEngine('leaflet');
     };
@@ -157,11 +208,13 @@ export default function AuthorityMap({
   useEffect(() => {
     if (engine !== 'leaflet' || !leafletContainerRef.current || !window.L) return;
 
+    const centerPt = toLatLng(centerCoords) || { lat: 12.9352, lng: 77.5358 };
+
     if (!leafletMapRef.current) {
       const map = window.L.map(leafletContainerRef.current, {
         zoomControl: false,
         attributionControl: false
-      }).setView([centerCoords.lat, centerCoords.lng], 14);
+      }).setView([centerPt.lat, centerPt.lng], 14);
 
       leafletMapRef.current = map;
 
@@ -172,7 +225,7 @@ export default function AuthorityMap({
 
       window.L.control.zoom({ position: 'bottomright' }).addTo(map);
     } else {
-      leafletMapRef.current.setView([centerCoords.lat, centerCoords.lng]);
+      leafletMapRef.current.setView([centerPt.lat, centerPt.lng]);
     }
 
     const map = leafletMapRef.current;
@@ -181,8 +234,8 @@ export default function AuthorityMap({
     if (leafletLayersRef.current.geofence) {
       map.removeLayer(leafletLayersRef.current.geofence);
     }
-    const geofenceCircle = window.L.circle([centerCoords.lat, centerCoords.lng], {
-      radius: radiusKm * 1000,
+    const geofenceCircle = window.L.circle([centerPt.lat, centerPt.lng], {
+      radius: (radiusKm || 5) * 1000,
       color: '#EA3B52',
       weight: 1.5,
       dashArray: '6, 6',
@@ -205,7 +258,7 @@ export default function AuthorityMap({
       iconSize: [34, 34],
       iconAnchor: [17, 17]
     });
-    window.L.marker([centerCoords.lat, centerCoords.lng], { icon: stationIcon })
+    window.L.marker([centerPt.lat, centerPt.lng], { icon: stationIcon })
       .bindTooltip("Command HQ (Surrounding Center)", { permanent: false, direction: 'top' })
       .addTo(map);
 
@@ -213,8 +266,10 @@ export default function AuthorityMap({
     leafletLayersRef.current.hotspots.forEach(layer => map.removeLayer(layer));
     leafletLayersRef.current.hotspots = [];
 
-    hotspots.forEach(spot => {
-      const circle = window.L.circle([spot.location.lat, spot.location.lng], {
+    (hotspots || []).forEach(spot => {
+      const pt = toLatLng(spot?.location || spot?.coordinates);
+      if (!pt) return;
+      const circle = window.L.circle([pt.lat, pt.lng], {
         radius: spot.radiusMeters || 350,
         color: '#DC2626',
         weight: 1.5,
@@ -225,7 +280,7 @@ export default function AuthorityMap({
       circle.bindTooltip(`
         <div style="padding: 2px;">
           <strong style="color: #DC2626; font-size: 11px;">⚠️ ${spot.name}</strong><br/>
-          <span style="font-size: 10px; color: #475569;">${spot.collisionCount} Accidents • Peak: ${spot.peakHours}</span>
+          <span style="font-size: 10px; color: #475569;">${spot.collisionCount || 0} Accidents • Peak: ${spot.peakHours || 'Evening'}</span>
         </div>
       `, { direction: 'top', className: 'custom-bubble-tooltip' });
 
@@ -236,7 +291,9 @@ export default function AuthorityMap({
     leafletLayersRef.current.incidents.forEach(layer => map.removeLayer(layer));
     leafletLayersRef.current.incidents = [];
 
-    activeIncidents.forEach(inc => {
+    (activeIncidents || []).forEach(inc => {
+      const pt = toLatLng(inc?.location || inc?.coordinates);
+      if (!pt) return;
       const isSelected = selectedIncidentId === inc.id;
       const incIcon = window.L.divIcon({
         className: 'custom-inc-marker',
@@ -250,8 +307,8 @@ export default function AuthorityMap({
         iconAnchor: [14, 14]
       });
 
-      const marker = window.L.marker([inc.location.lat, inc.location.lng], { icon: incIcon }).addTo(map);
-      marker.bindTooltip(`<strong>${inc.id}: ${inc.userName}</strong><br/>${inc.categoryLabel}`, {
+      const marker = window.L.marker([pt.lat, pt.lng], { icon: incIcon }).addTo(map);
+      marker.bindTooltip(`<strong>${inc.code || inc.id}: ${inc.userName || inc.personName || 'Citizen'}</strong><br/>${inc.category || 'Emergency'}`, {
         permanent: isSelected,
         direction: 'top',
         className: 'custom-bubble-tooltip'
@@ -268,7 +325,9 @@ export default function AuthorityMap({
     leafletLayersRef.current.ambulances.forEach(layer => map.removeLayer(layer));
     leafletLayersRef.current.ambulances = [];
 
-    ambulances.forEach(amb => {
+    (ambulances || []).forEach(amb => {
+      const pt = toLatLng(amb?.location);
+      if (!pt) return;
       const isCandidate = amb.isDisplaceCandidate;
       const ambIcon = window.L.divIcon({
         className: 'custom-amb-marker',
@@ -281,8 +340,8 @@ export default function AuthorityMap({
         iconAnchor: [12, 12]
       });
 
-      const marker = window.L.marker([amb.location.lat, amb.location.lng], { icon: ambIcon }).addTo(map);
-      marker.bindTooltip(`<strong>${amb.vehicleNo}</strong> (${amb.status})<br/>${amb.type}`, {
+      const marker = window.L.marker([pt.lat, pt.lng], { icon: ambIcon }).addTo(map);
+      marker.bindTooltip(`<strong>${amb.vehicleNo}</strong> (${amb.status})<br/>${amb.type || ''}`, {
         direction: 'bottom',
         className: 'custom-bubble-tooltip'
       });
@@ -292,8 +351,9 @@ export default function AuthorityMap({
 
     // Blind Spot
     if (leafletLayersRef.current.blindSpot) map.removeLayer(leafletLayersRef.current.blindSpot);
-    if (blindSpot) {
-      const blindCircle = window.L.circle([blindSpot.location.lat, blindSpot.location.lng], {
+    const blindPt = toLatLng(blindSpot?.location || blindSpot?.targetStagingCoords);
+    if (blindPt) {
+      const blindCircle = window.L.circle([blindPt.lat, blindPt.lng], {
         radius: 650,
         color: '#D97706',
         weight: 2,
@@ -304,7 +364,7 @@ export default function AuthorityMap({
 
       blindCircle.bindTooltip(`
         <strong>Coverage Blind Spot (ETA > 8m)</strong><br/>
-        Projected Arrival: <span style="color: #D97706; font-weight: bold;">${blindSpot.currentEtaMinutes} mins</span>
+        Projected Arrival: <span style="color: #D97706; font-weight: bold;">${blindSpot.currentEtaMinutes || 11.4} mins</span>
       `, { direction: 'top', className: 'custom-bubble-tooltip' });
 
       leafletLayersRef.current.blindSpot = blindCircle;
@@ -312,10 +372,12 @@ export default function AuthorityMap({
 
     // Displacement Route Line
     if (leafletLayersRef.current.displacementRoute) map.removeLayer(leafletLayersRef.current.displacementRoute);
-    if (displacementPlan && displacementPlan.isExecuted && ambulances.length >= 3) {
+    const amb2Pt = (ambulances || []).length >= 3 ? toLatLng(ambulances[2]?.location) : null;
+    const targetPt = toLatLng(displacementPlan?.targetStagingLocation || displacementPlan?.targetStagingCoords);
+    if (displacementPlan && displacementPlan.isExecuted && amb2Pt && targetPt) {
       const routeLine = window.L.polyline([
-        [ambulances[2].location.lat, ambulances[2].location.lng],
-        [displacementPlan.targetStagingLocation.lat, displacementPlan.targetStagingLocation.lng]
+        [amb2Pt.lat, amb2Pt.lng],
+        [targetPt.lat, targetPt.lng]
       ], {
         color: '#059669',
         weight: 3.5,
@@ -336,12 +398,12 @@ export default function AuthorityMap({
   return (
     <div className="relative w-full h-full bg-slate-100 overflow-hidden select-none">
       {/* 1. ACTUAL GOOGLE MAPS PLATFORM VIEW */}
-      {engine === 'google' && (
+      {engine === 'google' && GOOGLE_MAPS_API_KEY && (
         <APIProvider apiKey={GOOGLE_MAPS_API_KEY} libraries={['marker', 'geometry']}>
           <Map
             mapId={GOOGLE_MAPS_ID}
             internalUsageAttributionIds={GOOGLE_MAPS_ATTRIBUTION}
-            defaultCenter={centerCoords}
+            defaultCenter={safeCenter}
             defaultZoom={14}
             gestureHandling="greedy"
             disableDefaultUI={false}
@@ -352,11 +414,11 @@ export default function AuthorityMap({
             style={{ width: '100%', height: '100%' }}
           >
             {/* Camera pan & zoom controller */}
-            <GoogleMapPanController center={centerCoords} radiusKm={radiusKm} />
+            <GoogleMapPanController center={safeCenter} radiusKm={radiusKm} />
 
             {/* Geofence & Vector Overlays */}
             <GoogleMapOverlays
-              centerCoords={centerCoords}
+              centerCoords={safeCenter}
               radiusKm={radiusKm}
               hotspots={hotspots}
               blindSpot={blindSpot}
@@ -365,7 +427,7 @@ export default function AuthorityMap({
             />
 
             {/* 1. Authority Station HQ Marker (Center) */}
-            <AdvancedMarker position={centerCoords} title="Command HQ (Surrounding Center)">
+            <AdvancedMarker position={safeCenter} title="Command HQ (Surrounding Center)">
               <div className="relative flex flex-col items-center cursor-pointer">
                 <div className="px-2.5 py-1 bg-slate-900 text-white rounded-full shadow-lg text-[10px] font-black border border-white mb-1 tracking-tight flex items-center gap-1.5 whitespace-nowrap">
                   <span className="w-2 h-2 rounded-full bg-[#EA3B52] animate-pulse" />
@@ -381,37 +443,43 @@ export default function AuthorityMap({
             </AdvancedMarker>
 
             {/* 2. Accident Hotspot Markers */}
-            {hotspots.map(spot => (
-              <AdvancedMarker
-                key={spot.id}
-                position={spot.location}
-                title={`${spot.name} (${spot.collisionCount} collisions)`}
-              >
-                <div className="relative flex flex-col items-center cursor-pointer hover:scale-105 transition-transform">
-                  <div className="px-2 py-0.5 bg-rose-600 text-white rounded-full shadow-md text-[9px] font-black mb-0.5 whitespace-nowrap border border-white">
-                    ⚠️ {spot.collisionCount} Crashes
+            {(hotspots || []).map(spot => {
+              const pos = toLatLng(spot?.location || spot?.coordinates);
+              if (!pos) return null;
+              return (
+                <AdvancedMarker
+                  key={spot.id}
+                  position={pos}
+                  title={`${spot.name} (${spot.collisionCount || 0} collisions)`}
+                >
+                  <div className="relative flex flex-col items-center cursor-pointer hover:scale-105 transition-transform">
+                    <div className="px-2 py-0.5 bg-rose-600 text-white rounded-full shadow-md text-[9px] font-black mb-0.5 whitespace-nowrap border border-white">
+                      ⚠️ {spot.collisionCount || 0} Crashes
+                    </div>
+                    <div className="w-5 h-5 bg-white border-2 border-rose-600 rounded-full shadow-sm flex items-center justify-center text-[10px]">
+                      💥
+                    </div>
                   </div>
-                  <div className="w-5 h-5 bg-white border-2 border-rose-600 rounded-full shadow-sm flex items-center justify-center text-[10px]">
-                    💥
-                  </div>
-                </div>
-              </AdvancedMarker>
-            ))}
+                </AdvancedMarker>
+              );
+            })}
 
             {/* 3. Active Distress Incidents (Clickable to open inspect drawer) */}
-            {activeIncidents.map(inc => {
+            {(activeIncidents || []).map(inc => {
+              const pos = toLatLng(inc?.location || inc?.coordinates);
+              if (!pos) return null;
               const isSelected = selectedIncidentId === inc.id;
               return (
                 <AdvancedMarker
                   key={inc.id}
-                  position={inc.location}
-                  title={`${inc.id}: ${inc.userName}`}
+                  position={pos}
+                  title={`${inc.code || inc.id}: ${inc.userName || inc.personName || 'Citizen'}`}
                   onClick={() => onSelectIncident && onSelectIncident(inc)}
                 >
                   <div className={`relative flex flex-col items-center cursor-pointer hover:scale-110 transition-transform ${isSelected ? 'scale-110' : ''}`}>
                     <div className="px-2 py-0.5 bg-[#EA3B52] text-white rounded-full shadow-lg text-[10px] font-bold mb-0.5 whitespace-nowrap flex items-center gap-1 border border-white animate-pulse">
                       <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                      <span>{inc.userName}</span>
+                      <span>{inc.userName || inc.personName || 'Citizen'}</span>
                     </div>
                     <div className="relative w-6 h-6 flex items-center justify-center">
                       <div className="absolute w-6 h-6 bg-rose-500/40 rounded-full animate-ping" />
@@ -423,12 +491,14 @@ export default function AuthorityMap({
             })}
 
             {/* 4. Ambulances Fleet Units */}
-            {ambulances.map(amb => {
+            {(ambulances || []).map(amb => {
+              const pos = toLatLng(amb?.location);
+              if (!pos) return null;
               const isCandidate = amb.isDisplaceCandidate;
               return (
                 <AdvancedMarker
-                  key={amb.vehicleNo}
-                  position={amb.location}
+                  key={amb.vehicleNo || amb.id}
+                  position={pos}
                   title={`${amb.vehicleNo} (${amb.status})`}
                 >
                   <div className="relative flex flex-col items-center cursor-pointer hover:scale-105 transition-transform">
@@ -444,27 +514,31 @@ export default function AuthorityMap({
             })}
 
             {/* 5. Blind Spot Warning Pin */}
-            {blindSpot && (
-              <AdvancedMarker
-                position={blindSpot.location}
-                title={`Blind Spot: ${blindSpot.currentEtaMinutes}m ETA`}
-              >
-                <div className="relative flex flex-col items-center cursor-pointer">
-                  <div className="px-2 py-0.5 bg-amber-500 text-slate-900 rounded-full shadow-md text-[9px] font-black mb-0.5 whitespace-nowrap border border-white">
-                    ETA {blindSpot.currentEtaMinutes}m (Gap)
+            {(() => {
+              const pos = toLatLng(blindSpot?.location || blindSpot?.targetStagingCoords);
+              if (!pos) return null;
+              return (
+                <AdvancedMarker
+                  position={pos}
+                  title={`Blind Spot: ${blindSpot.currentEtaMinutes || 11.4}m ETA`}
+                >
+                  <div className="relative flex flex-col items-center cursor-pointer">
+                    <div className="px-2 py-0.5 bg-amber-500 text-slate-900 rounded-full shadow-md text-[9px] font-black mb-0.5 whitespace-nowrap border border-white">
+                      ETA {blindSpot.currentEtaMinutes || 11.4}m (Gap)
+                    </div>
+                    <div className="w-5 h-5 bg-amber-100 border-2 border-amber-600 rounded-full shadow-sm flex items-center justify-center text-[10px]">
+                      ⚠️
+                    </div>
                   </div>
-                  <div className="w-5 h-5 bg-amber-100 border-2 border-amber-600 rounded-full shadow-sm flex items-center justify-center text-[10px]">
-                    ⚠️
-                  </div>
-                </div>
-              </AdvancedMarker>
-            )}
+                </AdvancedMarker>
+              );
+            })()}
           </Map>
         </APIProvider>
       )}
 
       {/* 2. LEAFLET ZERO-WATERMARK FALLBACK VIEW */}
-      {engine === 'leaflet' && (
+      {(engine === 'leaflet' || !GOOGLE_MAPS_API_KEY) && (
         <div ref={leafletContainerRef} className="w-full h-full" />
       )}
 

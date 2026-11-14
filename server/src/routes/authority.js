@@ -15,8 +15,7 @@ import { buildErss112Payload } from '../services/erssHandoff.js';
 import { broadcastToAuthorities, broadcastToIncident } from '../realtime/ws.js';
 
 const router = express.Router();
-router.use(authenticate);
-router.use(requireRole('authority', 'admin'));
+router.use('/authority', authenticate, requireRole('authority', 'admin'));
 
 router.get('/authority/sector', async (req, res, next) => {
   try {

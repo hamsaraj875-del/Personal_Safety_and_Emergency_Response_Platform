@@ -15,7 +15,7 @@ import { TriageService } from '../services/triageService.js';
 import { broadcastToAuthorities } from '../realtime/ws.js';
 
 const router = express.Router();
-router.use(authenticate);
+router.use('/incidents', authenticate);
 
 const createIncidentSchema = z.object({
   lat: z.number(),

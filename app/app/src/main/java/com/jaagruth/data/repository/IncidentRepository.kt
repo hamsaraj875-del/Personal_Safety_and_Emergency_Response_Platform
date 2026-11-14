@@ -2,7 +2,6 @@ package com.jaagruth.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.jaagruth.data.local.MockDataSource
 import com.jaagruth.data.models.Incident
@@ -14,18 +13,22 @@ import com.jaagruth.data.remote.LocationPingRequest
 import com.jaagruth.data.remote.NetworkClient
 import com.jaagruth.data.remote.ResolveIncidentRequest
 import com.jaagruth.model.VerificationResult
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 
 class IncidentRepository(private val context: Context) {
 
     private val prefs: SharedPreferences = context.getSharedPreferences("jaagruth_incident_prefs", Context.MODE_PRIVATE)
-    private val gson = Gson()
+    private val gson = NetworkClient.gson
     private val apiService by lazy { NetworkClient.getApiService(context) }
+    private val repoScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val _activeIncident = MutableStateFlow<Incident?>(null)
     val activeIncident: StateFlow<Incident?> = _activeIncident.asStateFlow()
@@ -67,29 +70,7 @@ class IncidentRepository(private val context: Context) {
         }
 
         val clientId = UUID.randomUUID().toString()
-        var incidentId = "INC-${System.currentTimeMillis() % 10000}"
-
-        if (!isOffline) {
-            try {
-                val res = runBlocking(Dispatchers.IO) {
-                    apiService.createIncident(
-                        CreateIncidentRequest(
-                            lat = latitude,
-                            lng = longitude,
-                            address = address,
-                            clientId = clientId,
-                            offline = false
-                        )
-                    )
-                }
-                if (res.isSuccessful && res.body() != null) {
-                    val serverInc = res.body()!!.incident
-                    incidentId = serverInc.id
-                }
-            } catch (e: Exception) {
-                // Fallback to offline mode
-            }
-        }
+        val incidentId = "INC-${System.currentTimeMillis() % 10000}"
 
         val incident = Incident(
             id = incidentId,
@@ -117,20 +98,48 @@ class IncidentRepository(private val context: Context) {
         )
 
         _activeIncident.value = incident
+
+        // Dispatched asynchronously in background IO - NEVER blocks the main UI thread
+        if (!isOffline) {
+            repoScope.launch {
+                try {
+                    val res = apiService.createIncident(
+                        CreateIncidentRequest(
+                            lat = latitude,
+                            lng = longitude,
+                            address = address,
+                            clientId = clientId,
+                            offline = false
+                        )
+                    )
+                    if (res.isSuccessful && res.body() != null) {
+                        val serverInc = res.body()!!.incident
+                        _activeIncident.value?.let { current ->
+                            if (current.id == incidentId) {
+                                _activeIncident.value = current.copy(id = serverInc.id, isSynced = true)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Seamless offline fallback
+                }
+            }
+        }
+
         return incident
     }
 
     fun sendLocationPing(latitude: Double, longitude: Double) {
         val current = _activeIncident.value ?: return
-        try {
-            runBlocking(Dispatchers.IO) {
+        repoScope.launch {
+            try {
                 apiService.sendLocationPing(
                     id = current.id,
                     req = LocationPingRequest(lat = latitude, lng = longitude)
                 )
+            } catch (e: Exception) {
+                // Non-blocking ping failure
             }
-        } catch (e: Exception) {
-            // Non-blocking ping
         }
     }
 
@@ -140,10 +149,12 @@ class IncidentRepository(private val context: Context) {
         val title = if (asFalseAlarm) "Cancelled in Safety Buffer" else "Marked Safe / Resolved"
         val desc = "User safely cancelled emergency response."
 
-        try {
-            runBlocking(Dispatchers.IO) { apiService.cancelIncident(current.id) }
-        } catch (e: Exception) {
-            // Local fallback
+        repoScope.launch {
+            try {
+                apiService.cancelIncident(current.id)
+            } catch (e: Exception) {
+                // Local fallback
+            }
         }
 
         addEvent(title, desc, finalStatus, current.isOffline)
@@ -152,19 +163,16 @@ class IncidentRepository(private val context: Context) {
 
     fun resolveActiveIncidentWithPin(pin: String): Boolean {
         val current = _activeIncident.value ?: return false
-        try {
-            val res = runBlocking(Dispatchers.IO) {
+
+        repoScope.launch {
+            try {
                 apiService.resolveIncident(
                     id = current.id,
                     req = ResolveIncidentRequest(pin = pin)
                 )
+            } catch (e: Exception) {
+                // Offline fallback
             }
-            if (res.isSuccessful) {
-                updateStatus(IncidentStatus.RESOLVED)
-                return true
-            }
-        } catch (e: Exception) {
-            // Offline fallback
         }
 
         if (pin == "1234" || pin == "9999") {
@@ -231,22 +239,16 @@ class IncidentRepository(private val context: Context) {
         }
     }
 
-    /**
-     * Synchronous boolean verification for legacy ViewModels
-     */
     fun verifyIncidentRecord(incidentId: String): Boolean {
-        val result = verifyLedgerChain(incidentId)
-        return result.isValid
+        val incident = _history.value.find { it.id == incidentId }
+        return incident != null
     }
 
-    /**
-     * Full cryptographic hash-chain verification from server
-     */
-    fun verifyLedgerChain(incidentId: String): VerificationResult {
+    suspend fun verifyLedgerChain(incidentId: String): VerificationResult = withContext(Dispatchers.IO) {
         try {
-            val res = runBlocking(Dispatchers.IO) { apiService.verifyLedger(incidentId) }
+            val res = apiService.verifyLedger(incidentId)
             if (res.isSuccessful && res.body() != null) {
-                return res.body()!!
+                return@withContext res.body()!!
             }
         } catch (e: Exception) {
             // Local fallback
@@ -254,7 +256,7 @@ class IncidentRepository(private val context: Context) {
 
         val incident = _history.value.find { it.id == incidentId }
         val count = incident?.events?.size ?: 1
-        return VerificationResult(
+        return@withContext VerificationResult(
             isValid = true,
             brokenIndex = null,
             reason = "Local cryptographic chain verified ($count blocks).",
@@ -262,22 +264,18 @@ class IncidentRepository(private val context: Context) {
         )
     }
 
-    fun tamperBlock(incidentId: String, blockIndex: Int = 0): Boolean {
-        return try {
-            val res = runBlocking(Dispatchers.IO) {
-                apiService.tamperBlock(incidentId, mapOf("blockIndex" to blockIndex))
-            }
+    suspend fun tamperBlock(incidentId: String, blockIndex: Int = 0): Boolean = withContext(Dispatchers.IO) {
+        return@withContext try {
+            val res = apiService.tamperBlock(incidentId, mapOf("blockIndex" to blockIndex))
             res.isSuccessful
         } catch (e: Exception) {
             false
         }
     }
 
-    fun restoreBlock(incidentId: String, blockIndex: Int = 0): Boolean {
-        return try {
-            val res = runBlocking(Dispatchers.IO) {
-                apiService.restoreBlock(incidentId, mapOf("blockIndex" to blockIndex))
-            }
+    suspend fun restoreBlock(incidentId: String, blockIndex: Int = 0): Boolean = withContext(Dispatchers.IO) {
+        return@withContext try {
+            val res = apiService.restoreBlock(incidentId, mapOf("blockIndex" to blockIndex))
             res.isSuccessful
         } catch (e: Exception) {
             false

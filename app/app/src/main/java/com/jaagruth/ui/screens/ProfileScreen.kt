@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +48,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import coil.compose.rememberAsyncImagePainter
 import com.jaagruth.model.UserProfile
 import com.jaagruth.service.BenchmarkResult
@@ -81,12 +84,16 @@ fun ProfileScreen(
 ) {
     var isSimulating by remember { mutableStateOf(false) }
     var simulationData by remember { mutableStateOf<BenchmarkResult?>(null) }
+    val scope = rememberCoroutineScope()
 
     fun handleRunSimulation() {
+        if (isSimulating) return
         isSimulating = true
-        val result = SimulationRunner.runFullBenchmarkSimulation()
-        simulationData = result
-        isSimulating = false
+        scope.launch(Dispatchers.Default) {
+            val result = SimulationRunner.runFullBenchmarkSimulation()
+            simulationData = result
+            isSimulating = false
+        }
     }
 
     Column(
