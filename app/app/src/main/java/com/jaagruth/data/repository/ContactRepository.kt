@@ -6,23 +6,29 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.jaagruth.data.local.MockDataSource
 import com.jaagruth.data.models.Contact
+import com.jaagruth.data.remote.CreateContactRequest
+import com.jaagruth.data.remote.NetworkClient
+import com.jaagruth.data.remote.ReorderContactsRequest
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.runBlocking
 
-class ContactRepository(context: Context) {
+class ContactRepository(private val context: Context) {
 
     private val prefs: SharedPreferences = context.getSharedPreferences("jaagruth_contact_prefs", Context.MODE_PRIVATE)
     private val gson = Gson()
+    private val apiService by lazy { NetworkClient.getApiService(context) }
 
     private val _contacts = MutableStateFlow<List<Contact>>(emptyList())
     val contacts: StateFlow<List<Contact>> = _contacts.asStateFlow()
 
     init {
-        loadContacts()
+        loadLocalContacts()
     }
 
-    private fun loadContacts() {
+    private fun loadLocalContacts() {
         val json = prefs.getString(KEY_CONTACTS, null)
         if (json != null) {
             try {
@@ -37,6 +43,29 @@ class ContactRepository(context: Context) {
             _contacts.value = MockDataSource.getInitialContacts()
             saveContacts(_contacts.value)
         }
+    }
+
+    fun fetchContactsFromServer(): Result<List<Contact>> {
+        try {
+            val res = runBlocking(Dispatchers.IO) { apiService.getContacts() }
+            if (res.isSuccessful && res.body() != null) {
+                val serverList = res.body()!!.contacts.map { dto ->
+                    Contact(
+                        id = dto.id,
+                        name = dto.name,
+                        phoneNumber = dto.phone,
+                        relationship = dto.relation,
+                        priority = dto.priority,
+                        consentGiven = true
+                    )
+                }
+                saveContacts(serverList)
+                return Result.success(serverList)
+            }
+        } catch (e: Exception) {
+            // Network fallback
+        }
+        return Result.success(_contacts.value)
     }
 
     fun addContact(name: String, phone: String, relationship: String, consentGiven: Boolean): Result<Contact> {
@@ -55,12 +84,33 @@ class ContactRepository(context: Context) {
             return Result.failure(IllegalStateException("Maximum of $MAX_CONTACTS contacts allowed."))
         }
 
+        val priority = currentList.size + 1
+        var contactId = "c_${System.currentTimeMillis() % 10000}"
+
+        try {
+            val res = runBlocking(Dispatchers.IO) {
+                apiService.createContact(
+                    CreateContactRequest(
+                        name = name.trim(),
+                        phone = cleanPhone,
+                        relation = relationship.trim().ifBlank { "Emergency Contact" },
+                        priority = priority
+                    )
+                )
+            }
+            if (res.isSuccessful && res.body() != null) {
+                contactId = res.body()!!.id
+            }
+        } catch (e: Exception) {
+            // Local fallback
+        }
+
         val newContact = Contact(
-            id = "c_${System.currentTimeMillis() % 10000}",
+            id = contactId,
             name = name.trim(),
             phoneNumber = cleanPhone,
             relationship = relationship.trim().ifBlank { "Emergency Contact" },
-            priority = currentList.size + 1,
+            priority = priority,
             consentGiven = true
         )
         currentList.add(newContact)
@@ -69,10 +119,15 @@ class ContactRepository(context: Context) {
     }
 
     fun deleteContact(contactId: String): Boolean {
+        try {
+            runBlocking(Dispatchers.IO) { apiService.deleteContact(contactId) }
+        } catch (e: Exception) {
+            // Local fallback
+        }
+
         val currentList = _contacts.value.toMutableList()
         val removed = currentList.removeAll { it.id == contactId }
         if (removed) {
-            // Re-index priority
             currentList.forEachIndexed { index, contact ->
                 contact.priority = index + 1
             }
@@ -96,6 +151,15 @@ class ContactRepository(context: Context) {
             c.priority = i + 1
         }
         saveContacts(currentList)
+
+        try {
+            runBlocking(Dispatchers.IO) {
+                apiService.reorderContacts(ReorderContactsRequest(currentList.map { it.id }))
+            }
+        } catch (e: Exception) {
+            // Local fallback
+        }
+
         return true
     }
 

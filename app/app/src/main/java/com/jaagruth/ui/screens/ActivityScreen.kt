@@ -70,14 +70,24 @@ fun ActivityScreen(
     isTampered: Boolean,
     onTamperBlock: () -> Unit,
     onRestoreChain: () -> Unit,
+    onVerifyRecord: ((onResult: (VerificationResult) -> Unit) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var verificationResult by remember { mutableStateOf<VerificationResult?>(null) }
     var isVerifying by remember { mutableStateOf(false) }
 
     fun handleVerify() {
-        val result = CryptoLedger.verifyChainIntegrity(chain)
-        verificationResult = result
+        isVerifying = true
+        if (onVerifyRecord != null) {
+            onVerifyRecord { result ->
+                verificationResult = result
+                isVerifying = false
+            }
+        } else {
+            val result = CryptoLedger.verifyChainIntegrity(chain)
+            verificationResult = result
+            isVerifying = false
+        }
     }
 
     fun getEventFriendlyName(type: String): String = when (type) {
