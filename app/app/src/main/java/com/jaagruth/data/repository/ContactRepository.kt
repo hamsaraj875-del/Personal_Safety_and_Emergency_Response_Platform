@@ -92,7 +92,7 @@ class ContactRepository(private val context: Context) {
 
         val newPriority = currentList.size + 1
         val newContact = Contact(
-            id = "c_${System.currentTimeMillis()}",
+            id = "c_${System.currentTimeMillis() % 10000}",
             name = name.trim(),
             phoneNumber = cleanPhone,
             relationship = relationship.trim().ifEmpty { "Emergency Network" },
@@ -130,19 +130,16 @@ class ContactRepository(private val context: Context) {
         return Result.success(newContact)
     }
 
-    fun deleteContact(contactId: String): Result<Unit> {
+    fun deleteContact(contactId: String): Boolean {
         val currentList = _contacts.value.toMutableList()
         val index = currentList.indexOfFirst { it.id == contactId }
-        if (index == -1) {
-            return Result.failure(NoSuchElementException("Contact not found."))
-        }
-        currentList.removeAt(index)
+        if (index == -1) return false
 
-        // Re-number priorities 1..N
-        val renumbered = currentList.mapIndexed { idx, contact ->
-            contact.copy(priority = idx + 1)
+        currentList.removeAt(index)
+        currentList.forEachIndexed { idx, contact ->
+            contact.priority = idx + 1
         }
-        saveContacts(renumbered)
+        saveContacts(currentList)
 
         if (!_isOfflineSimulated.value) {
             repoScope.launch {
@@ -154,7 +151,35 @@ class ContactRepository(private val context: Context) {
             }
         }
 
-        return Result.success(Unit)
+        return true
+    }
+
+    fun updatePriority(contactId: String, moveUp: Boolean): Boolean {
+        val currentList = _contacts.value.toMutableList()
+        val index = currentList.indexOfFirst { it.id == contactId }
+        if (index == -1) return false
+
+        val targetIndex = if (moveUp) index - 1 else index + 1
+        if (targetIndex !in currentList.indices) return false
+
+        val contact = currentList.removeAt(index)
+        currentList.add(targetIndex, contact)
+
+        currentList.forEachIndexed { i, c ->
+            c.priority = i + 1
+        }
+        saveContacts(currentList)
+
+        if (!_isOfflineSimulated.value) {
+            repoScope.launch {
+                try {
+                    apiService.reorderContacts(ReorderContactsRequest(currentList.map { it.id }))
+                } catch (e: Exception) {
+                    // Ignore
+                }
+            }
+        }
+        return true
     }
 
     fun reorderContacts(fromPriority: Int, toPriority: Int) {
@@ -166,15 +191,15 @@ class ContactRepository(private val context: Context) {
             val item = currentList.removeAt(fromIndex)
             currentList.add(toIndex, item)
 
-            val renumbered = currentList.mapIndexed { idx, contact ->
-                contact.copy(priority = idx + 1)
+            currentList.forEachIndexed { idx, contact ->
+                contact.priority = idx + 1
             }
-            saveContacts(renumbered)
+            saveContacts(currentList)
 
             if (!_isOfflineSimulated.value) {
                 repoScope.launch {
                     try {
-                        apiService.reorderContacts(ReorderContactsRequest(renumbered.map { it.id }))
+                        apiService.reorderContacts(ReorderContactsRequest(currentList.map { it.id }))
                     } catch (e: Exception) {
                         // Ignore
                     }
