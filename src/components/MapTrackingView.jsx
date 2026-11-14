@@ -1,8 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, MessageSquare, ChevronLeft, ShieldCheck, Navigation, Crosshair, AlertCircle } from 'lucide-react';
+import {
+  Phone,
+  MessageSquare,
+  ChevronLeft,
+  ShieldCheck,
+  Navigation,
+  Crosshair,
+  AlertTriangle,
+  Clock,
+  CheckCircle2
+} from 'lucide-react';
 import LiveEmergencyMap from './LiveEmergencyMap';
-import { MAP_CONFIG, getNearbyResponders, getSurroundingSafetyHubs, getLocalRoutePoints } from '../constants/initialData';
+import { MAP_CONFIG, getNearbyResponders, getLocalRoutePoints } from '../constants/initialData';
 import { getCurrentDeviceLocation, requestLocationPermission, reverseGeocodeCoords } from '../services/locationService';
+import {
+  getLiveSurroundingEmergencyHubs,
+  getDistanceKm,
+  formatDistance
+} from '../services/emergencyPlacesService';
 
 export default function MapTrackingView({
   onBack,
@@ -19,12 +34,23 @@ export default function MapTrackingView({
     return { lat: MAP_CONFIG.userPos[0], lng: MAP_CONFIG.userPos[1] };
   });
 
-  const localResponders = getNearbyResponders(userPos);
-  const activeResp = currentResponder || localResponders[0];
+  // Strict check: Responder must be in local area (< 20 km)
+  const getSafeResponder = (uPos, resp) => {
+    const nearby = getNearbyResponders(uPos);
+    if (!resp || !resp.location) return nearby[0];
+    const dist = getDistanceKm(uPos.lat, uPos.lng, resp.location.lat, resp.location.lng);
+    if (dist > 20) {
+      return nearby[0];
+    }
+    return resp;
+  };
+
+  const [activeResp, setActiveResp] = useState(() => getSafeResponder(userPos, currentResponder));
   const [responderPos, setResponderPos] = useState(() => activeResp.location);
 
-  // Surrounding emergency hubs around user
-  const [safetyHubs, setSafetyHubs] = useState(() => getSurroundingSafetyHubs(userPos));
+  // Surrounding emergency hubs around user & hospital analysis
+  const [safetyHubs, setSafetyHubs] = useState([]);
+  const [hospitalAnalysis, setHospitalAnalysis] = useState(null);
   const [selectedHub, setSelectedHub] = useState(null);
   const [routePoints, setRoutePoints] = useState(() => getLocalRoutePoints(userPos, responderPos));
   const [isLocating, setIsLocating] = useState(false);
@@ -33,13 +59,32 @@ export default function MapTrackingView({
   useEffect(() => {
     if (userCoords?.lat && userCoords?.lng) {
       setUserPos(userCoords);
-      const updatedNearby = getNearbyResponders(userCoords);
-      const resp = currentResponder || updatedNearby[0];
-      setResponderPos(resp.location);
-      setSafetyHubs(getSurroundingSafetyHubs(userCoords));
-      setRoutePoints(getLocalRoutePoints(userCoords, resp.location));
+      const safeResp = getSafeResponder(userCoords, currentResponder);
+      setActiveResp(safeResp);
+      setResponderPos(safeResp.location);
+      setRoutePoints(getLocalRoutePoints(userCoords, safeResp.location));
     }
   }, [userCoords, currentResponder]);
+
+  // Load real surrounding emergency hubs (20 km radius)
+  useEffect(() => {
+    let isMounted = true;
+    async function loadHubs() {
+      try {
+        const result = await getLiveSurroundingEmergencyHubs(userPos, false);
+        if (isMounted && result) {
+          setSafetyHubs(result.hubs);
+          setHospitalAnalysis(result.hospitalAnalysis);
+        }
+      } catch (err) {
+        console.warn("Failed to load hubs in tracking view:", err);
+      }
+    }
+    loadHubs();
+    return () => {
+      isMounted = false;
+    };
+  }, [userPos]);
 
   // Fetch real device location with user permission
   const handleFetchCurrentLocation = async () => {
@@ -57,11 +102,10 @@ export default function MapTrackingView({
       setUserPos(newPos);
       if (onUpdateUserCoords) onUpdateUserCoords(newPos);
 
-      const updatedNearby = getNearbyResponders(newPos);
-      const resp = currentResponder || updatedNearby[0];
-      setResponderPos(resp.location);
-      setSafetyHubs(getSurroundingSafetyHubs(newPos));
-      setRoutePoints(getLocalRoutePoints(newPos, resp.location));
+      const safeResp = getSafeResponder(newPos, currentResponder);
+      setActiveResp(safeResp);
+      setResponderPos(safeResp.location);
+      setRoutePoints(getLocalRoutePoints(newPos, safeResp.location));
 
       const addr = await reverseGeocodeCoords(coords.lat, coords.lng);
       alert(`Location Acquired!\nLatitude: ${coords.lat.toFixed(5)}\nLongitude: ${coords.lng.toFixed(5)}\nAddress: ${addr}`);
@@ -76,7 +120,7 @@ export default function MapTrackingView({
   return (
     <div className="relative w-full h-full flex flex-col bg-white overflow-hidden select-none">
       {/* Top Header Card */}
-      <div className="pt-3 px-5 pb-2.5 bg-white z-20 shadow-sm border-b border-slate-100 flex-shrink-0">
+      <div className="pt-3 px-5 pb-2.5 bg-white z-20 shadow-sm border-b border-slate-100 flex-shrink-0 text-left">
         <div className="flex items-center justify-between mb-1">
           <button
             onClick={onBack}
@@ -87,7 +131,7 @@ export default function MapTrackingView({
           </button>
 
           <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-            ● Live Local Dispatch Active
+            ● Local Dispatch Active (~{activeResp.distanceKm || 0.9} km)
           </span>
         </div>
 
@@ -96,7 +140,7 @@ export default function MapTrackingView({
         </h1>
 
         <p className="text-[12px] text-slate-500 mt-0.5 leading-snug">
-          Approaching from ~{activeResp.distanceKm || 0.9} km away. Tap surrounding hubs to inspect.
+          Approaching from your local sector. Real facilities in 20km radius mapped below.
         </p>
 
         <button
@@ -122,30 +166,51 @@ export default function MapTrackingView({
 
         {/* Selected Hub Card */}
         {selectedHub && (
-          <div className="absolute top-14 left-3 right-3 z-[1000] bg-white text-slate-900 p-3.5 rounded-2xl shadow-floating border border-slate-200 flex items-center justify-between animate-fadeIn">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{selectedHub.icon}</span>
-              <div>
-                <h4 className="text-xs font-bold text-slate-900">{selectedHub.name}</h4>
-                <p className="text-[11px] text-slate-500">{selectedHub.address} • <strong>{selectedHub.distanceMeters}m ({selectedHub.etaMins}m ETA)</strong></p>
-                <span className="text-[10px] text-emerald-600 font-semibold">{selectedHub.status}</span>
+          <div className="absolute top-14 left-3 right-3 z-[1000] bg-white text-slate-900 p-3.5 rounded-2xl shadow-floating border border-slate-200 animate-fadeIn text-left">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl p-1 bg-slate-100 rounded-xl">{selectedHub.icon}</span>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900">{selectedHub.name}</h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    {selectedHub.address} • <strong>{formatDistance(selectedHub.distanceMeters)}</strong> ({selectedHub.etaMins}m ETA)
+                  </p>
+                  <span
+                    className={`inline-block mt-0.5 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                      selectedHub.openNow === false
+                        ? 'bg-rose-100 text-rose-700'
+                        : 'bg-emerald-100 text-emerald-700'
+                    }`}
+                  >
+                    {selectedHub.status}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => alert(`Calling ${selectedHub.name} (${selectedHub.emergencyPhone || selectedHub.phone})...`)}
+                  className="p-2 bg-[#EA3B52] text-white rounded-xl hover:bg-[#d92d44] transition-all shadow-xs"
+                  title="Call Emergency Hub"
+                >
+                  <Phone className="w-3.5 h-3.5 fill-current" />
+                </button>
+                <button
+                  onClick={() => setSelectedHub(null)}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg text-sm font-bold"
+                >
+                  ✕
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => alert(`Calling ${selectedHub.name} (${selectedHub.phone})...`)}
-                className="p-2 bg-[#EA3B52] text-white rounded-xl hover:bg-[#d92d44] transition-all"
-                title="Call Emergency Hub"
-              >
-                <Phone className="w-3.5 h-3.5 fill-current" />
-              </button>
-              <button
-                onClick={() => setSelectedHub(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg"
-              >
-                ✕
-              </button>
+
+            <div className="text-[10px] text-slate-500 bg-slate-50 p-1.5 rounded-lg border border-slate-100 mt-2 flex items-center gap-1">
+              <Clock className="w-3 h-3 text-slate-400 flex-shrink-0" />
+              <span className="truncate">{selectedHub.hoursDescription || selectedHub.openingHoursText || 'Operating 24/7'}</span>
             </div>
+
+            <p className="text-[10px] text-slate-700 bg-amber-50/70 p-1.5 rounded-lg border border-amber-200/50 mt-1.5 leading-snug">
+              ℹ️ {selectedHub.briefing || "Verified emergency facility in active sector."}
+            </p>
           </div>
         )}
       </div>
@@ -160,8 +225,9 @@ export default function MapTrackingView({
             className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white border border-slate-200 text-[11px] font-semibold text-slate-700 whitespace-nowrap hover:border-rose-300 active:scale-95 transition-all shadow-2xs"
           >
             <span>{hub.icon}</span>
-            <span>{hub.category}</span>
-            <span className="text-[#EA3B52] font-bold">({hub.distanceMeters}m)</span>
+            <span className="font-bold">{hub.shortName || hub.name}</span>
+            <span className="text-[#EA3B52] font-mono font-bold">({formatDistance(hub.distanceMeters)})</span>
+            {hub.openNow === false && <span className="text-[9px] bg-rose-600 text-white px-1 rounded">CLOSED</span>}
           </button>
         ))}
       </div>
@@ -171,7 +237,7 @@ export default function MapTrackingView({
         <div className="flex gap-3 overflow-x-auto no-scrollbar pb-0.5 snap-x">
           {/* Active 1st Responder Card */}
           <div className="min-w-[280px] w-full bg-slate-50/80 rounded-2xl p-3 border border-slate-200/70 snap-center">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 text-left">
               <img
                 src={activeResp.avatar}
                 alt={activeResp.name}

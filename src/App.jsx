@@ -12,16 +12,18 @@ import MapTrackingView from './components/MapTrackingView';
 import CancelWindowModal from './components/CancelWindowModal';
 import SafetyPinModal from './components/SafetyPinModal';
 import InstructionModal from './components/InstructionModal';
+import LocationPermissionModal from './components/LocationPermissionModal';
 
 // Authority Modules
 import AuthorityDashboard from './components/authority/AuthorityDashboard';
 import AuthorityLoginModal from './components/authority/AuthorityLoginModal';
 
-import { VERIFIED_RESPONDERS, MAP_CONFIG } from './constants/initialData';
+import { VERIFIED_RESPONDERS, MAP_CONFIG, getNearbyResponders } from './constants/initialData';
 import { createIncidentBlock, verifyChainIntegrity, GENESIS_HASH } from './services/cryptoLedger';
 import { rankResponders } from './services/responderMatcher';
 import { runAITriage } from './services/aiTriage';
 import { getActiveSession, saveUser, clearActiveSession } from './services/storage';
+import { requestLocationPermission, getCurrentDeviceLocation, reverseGeocodeCoords } from './services/locationService';
 
 export default function App() {
   // Top-Level View Mode: 'citizen' | 'authority'
@@ -42,6 +44,7 @@ export default function App() {
   const [showCancelWindow, setShowCancelWindow] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showInstructionModal, setShowInstructionModal] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
 
   // Active User Profile & Custom Contacts
   const [userProfile, setUserProfile] = useState({
@@ -52,6 +55,42 @@ export default function App() {
   });
   const [userContacts, setUserContacts] = useState([]);
 
+  // Live GPS Coordinates
+  const [userCoords, setUserCoords] = useState({
+    lat: MAP_CONFIG.userPos[0],
+    lng: MAP_CONFIG.userPos[1]
+  });
+  const [isLocating, setIsLocating] = useState(false);
+
+  // Device GPS Location Permission & Sync Handler
+  const handleRefreshLocation = async () => {
+    setIsLocating(true);
+    try {
+      const perm = await requestLocationPermission();
+      if (!perm.granted) {
+        showToast(perm.error || "Location access was denied. Please allow GPS.");
+        setIsLocating(false);
+        return;
+      }
+      const coords = await getCurrentDeviceLocation();
+      const newPos = { lat: coords.lat, lng: coords.lng };
+      setUserCoords(newPos);
+      const localResps = getNearbyResponders(newPos);
+      setResponders(localResps);
+      setActiveResponder(localResps[0]);
+      const addr = await reverseGeocodeCoords(coords.lat, coords.lng);
+      setUserProfile(prev => ({
+        ...prev,
+        address: addr
+      }));
+      showToast("Live GPS location synced successfully!");
+    } catch (err) {
+      console.error("GPS Sync failed:", err);
+      showToast("Could not fetch device GPS. Check location settings.");
+    } finally {
+      setIsLocating(false);
+    }
+  };
   // Active Incident State
   const [incidentId, setIncidentId] = useState(null);
   const [escalationStep, setEscalationStep] = useState(0);
@@ -464,8 +503,13 @@ export default function App() {
                     onBack={() => setEmergencyScreen('idle')}
                     onSeeMap={() => setEmergencyScreen('map')}
                     onCancelRequest={() => setShowPinModal(true)}
-                    escalationStep={escalationStep || 3}
+                    escalationStep={escalationStep || 4}
                     elapsedSeconds={elapsedSeconds || 42}
+                    userCoords={userCoords}
+                    onUpdateUserCoords={setUserCoords}
+                    activeResponder={activeResponder}
+                    onCall={(resp) => alert(`Calling ${resp.name} (${resp.phone})...`)}
+                    onRequestLocationPermission={() => setShowLocationModal(true)}
                   />
                 )}
 
@@ -475,6 +519,8 @@ export default function App() {
                     onBack={() => setEmergencyScreen('dispatched')}
                     onOpenInstruction={() => setShowInstructionModal(true)}
                     currentResponder={activeResponder}
+                    userCoords={userCoords}
+                    onUpdateUserCoords={setUserCoords}
                     onCall={(resp) => alert(`Calling ${resp.name} (${resp.phone})...`)}
                     onMessage={(resp) => alert(`Opening secure messaging with ${resp.name}...`)}
                   />
@@ -558,6 +604,16 @@ export default function App() {
                   <InstructionModal
                     onClose={() => setShowInstructionModal(false)}
                     onDial112={handleDial112}
+                  />
+                )}
+
+                {showLocationModal && (
+                  <LocationPermissionModal
+                    onAllow={async () => {
+                      setShowLocationModal(false);
+                      await handleRefreshLocation();
+                    }}
+                    onDismiss={() => setShowLocationModal(false)}
                   />
                 )}
               </>

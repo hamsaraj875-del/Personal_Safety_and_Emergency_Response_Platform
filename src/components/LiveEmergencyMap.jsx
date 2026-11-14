@@ -111,20 +111,25 @@ export default function LiveEmergencyMap({
 
     // 3. Surrounding Safety Hubs Markers
     safetyHubs.forEach(hub => {
+      const isClosed = hub.openNow === false;
+      const borderColor = isClosed ? '#E11D48' : '#0F172A';
+      const badgeBg = isClosed ? '#BE123C' : 'rgba(15,23,42,0.9)';
+      const badgeLabel = isClosed ? `${hub.distanceMeters}m (CLOSED)` : `${hub.distanceMeters}m`;
+
       const hubIcon = window.L.divIcon({
         className: 'emergency-hub-pin',
         html: `
           <div style="display: flex; flex-direction: column; align-items: center; cursor: pointer;">
-            <div style="width: 28px; height: 28px; background: #FFFFFF; border: 2px solid #0F172A; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-size: 13px; box-shadow: 0 3px 8px rgba(0,0,0,0.18);">
+            <div style="width: 28px; height: 28px; background: #FFFFFF; border: 2.5px solid ${borderColor}; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-size: 13px; box-shadow: 0 3px 8px rgba(0,0,0,0.18);">
               ${hub.icon}
             </div>
-            <div style="background: rgba(15,23,42,0.9); color: #FFFFFF; font-weight: 700; font-size: 8px; padding: 1px 5px; border-radius: 6px; margin-top: 2px; white-space: nowrap;">
-              ${hub.distanceMeters}m
+            <div style="background: ${badgeBg}; color: #FFFFFF; font-weight: 700; font-size: 8px; padding: 1px 5px; border-radius: 6px; margin-top: 2px; white-space: nowrap;">
+              ${badgeLabel}
             </div>
           </div>
         `,
-        iconSize: [30, 42],
-        iconAnchor: [15, 21]
+        iconSize: [40, 42],
+        iconAnchor: [20, 21]
       });
 
       const hubMarker = window.L.marker([hub.location.lat, hub.location.lng], { icon: hubIcon }).addTo(map);
@@ -203,23 +208,34 @@ export default function LiveEmergencyMap({
             </AdvancedMarker>
 
             {/* Surrounding Safety Hubs */}
-            {safetyHubs.map(hub => (
-              <AdvancedMarker
-                key={hub.id}
-                position={hub.location}
-                title={hub.name}
-                onClick={() => onSelectHub && onSelectHub(hub)}
-              >
-                <div className="relative flex flex-col items-center cursor-pointer hover:scale-110 transition-transform">
-                  <div className="w-7 h-7 rounded-full bg-white shadow-md border-2 border-slate-800 flex items-center justify-center text-xs">
-                    {hub.icon}
+            {safetyHubs.map(hub => {
+              const isClosed = hub.openNow === false;
+              return (
+                <AdvancedMarker
+                  key={hub.id}
+                  position={hub.location}
+                  title={`${hub.name} (${hub.status})`}
+                  onClick={() => onSelectHub && onSelectHub(hub)}
+                >
+                  <div className="relative flex flex-col items-center cursor-pointer hover:scale-110 transition-transform">
+                    <div
+                      className={`w-7 h-7 rounded-full bg-white shadow-md border-2 flex items-center justify-center text-xs ${
+                        isClosed ? 'border-rose-600' : 'border-slate-800'
+                      }`}
+                    >
+                      {hub.icon}
+                    </div>
+                    <div
+                      className={`px-1.5 py-0.2 rounded text-[8px] font-bold mt-0.5 whitespace-nowrap text-white ${
+                        isClosed ? 'bg-rose-600' : 'bg-slate-900/90'
+                      }`}
+                    >
+                      {hub.distanceMeters}m {isClosed ? '(CLOSED)' : ''}
+                    </div>
                   </div>
-                  <div className="px-1.5 py-0.2 bg-slate-900/90 text-white rounded text-[8px] font-bold mt-0.5 whitespace-nowrap">
-                    {hub.distanceMeters}m
-                  </div>
-                </div>
-              </AdvancedMarker>
-            ))}
+                </AdvancedMarker>
+              );
+            })}
 
             <GoogleMapsRoutePolyline path={routePoints} color="#EA3B52" weight={4.5} />
           </Map>
