@@ -100,8 +100,24 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
 
     const unsubAlert = socketService.on('authority.alert', (alertData) => {
       console.log('[AUTHORITY ALERT]', alertData);
+      if (!alertData) return;
       setActiveSirenAlert(alertData);
       playSirenSound(alertData.duress);
+
+      if (alertData.incident) {
+        setSectorData((prev) => {
+          const exists = prev.activeIncidents.some((i) => i.id === alertData.incident.id);
+          const updated = exists ? prev.activeIncidents.map((i) => (i.id === alertData.incident.id ? alertData.incident : i)) : [alertData.incident, ...prev.activeIncidents];
+          return {
+            ...prev,
+            activeIncidents: updated,
+            telemetry: {
+              ...prev.telemetry,
+              activeSosCount: updated.length
+            }
+          };
+        });
+      }
 
       // Refresh sector data to pick up the new/escalated incident
       fetchSectorData();
@@ -257,19 +273,18 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
       {/* Realtime Siren & Duress Banner */}
       {activeSirenAlert && (
         <div
-          className={`px-6 py-3 flex items-center justify-between z-50 text-white animate-pulse transition-all ${
-            activeSirenAlert.duress ? 'bg-red-700 shadow-lg' : 'bg-[#EA3B52]'
-          }`}
+          className={`px-6 py-3 flex items-center justify-between z-50 text-white animate-pulse transition-all ${activeSirenAlert.duress ? 'bg-red-700 shadow-lg' : 'bg-[#EA3B52]'
+            }`}
         >
           <div className="flex items-center gap-3">
             <ShieldAlert className="w-6 h-6 animate-spin" />
             <div>
               <span className="font-mono font-black text-sm uppercase tracking-wider block">
-                {activeSirenAlert.duress
+                {activeSirenAlert.title || (activeSirenAlert.duress
                   ? '🚨 COVERT DURESS ALERT — HOSTAGE / COERCED RESOLUTION'
-                  : 'HIGH PRIORITY SIREN DISPATCH — STEP 4 ESCALATION'}
+                  : '🚨 HIGH PRIORITY SOS EMERGENCY ALERT')}
               </span>
-              <p className="text-xs text-rose-100">{activeSirenAlert.message}</p>
+              <p className="text-xs text-rose-100">{activeSirenAlert.message || `Emergency SOS triggered for ${activeSirenAlert.incident?.userName || 'Citizen'}`}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -325,11 +340,10 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
         <div className="flex items-center gap-2 bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/70">
           <button
             onClick={() => setActiveView('accidents')}
-            className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
-              activeView === 'accidents'
-                ? 'bg-[#EA3B52] text-white shadow-sm scale-102'
-                : 'text-slate-700 hover:text-slate-900 hover:bg-white/60'
-            }`}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${activeView === 'accidents'
+              ? 'bg-[#EA3B52] text-white shadow-sm scale-102'
+              : 'text-slate-700 hover:text-slate-900 hover:bg-white/60'
+              }`}
           >
             <AlertOctagon className="w-4 h-4 stroke-[2.2]" />
             <span>Accidents</span>
@@ -337,11 +351,10 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
 
           <button
             onClick={() => setActiveView('anpr')}
-            className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
-              activeView === 'anpr'
-                ? 'bg-[#EA3B52] text-white shadow-sm scale-102'
-                : 'text-slate-700 hover:text-slate-900 hover:bg-white/60'
-            }`}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${activeView === 'anpr'
+              ? 'bg-[#EA3B52] text-white shadow-sm scale-102'
+              : 'text-slate-700 hover:text-slate-900 hover:bg-white/60'
+              }`}
           >
             <ScanLine className="w-4 h-4 stroke-[2.2]" />
             <span>Vehicle Scanner</span>
@@ -349,11 +362,10 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
 
           <button
             onClick={() => setActiveView('fleet')}
-            className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
-              activeView === 'fleet'
-                ? 'bg-[#EA3B52] text-white shadow-sm scale-102'
-                : 'text-slate-700 hover:text-slate-900 hover:bg-white/60'
-            }`}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${activeView === 'fleet'
+              ? 'bg-[#EA3B52] text-white shadow-sm scale-102'
+              : 'text-slate-700 hover:text-slate-900 hover:bg-white/60'
+              }`}
           >
             <Ambulance className="w-4 h-4 stroke-[2.2]" />
             <span>Ambulances</span>
@@ -361,11 +373,10 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
 
           <button
             onClick={() => setActiveView('falseCases')}
-            className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${
-              activeView === 'falseCases'
-                ? 'bg-[#EA3B52] text-white shadow-sm scale-102'
-                : 'text-slate-700 hover:text-slate-900 hover:bg-white/60'
-            }`}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all ${activeView === 'falseCases'
+              ? 'bg-[#EA3B52] text-white shadow-sm scale-102'
+              : 'text-slate-700 hover:text-slate-900 hover:bg-white/60'
+              }`}
           >
             <ShieldCheck className="w-4 h-4 stroke-[2.2]" />
             <span>False Cases</span>
@@ -373,11 +384,10 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
 
           <button
             onClick={() => setActiveView('map')}
-            className={`px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all ${
-              activeView === 'map'
-                ? 'bg-slate-900 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
+            className={`px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all ${activeView === 'map'
+              ? 'bg-slate-900 text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+              }`}
           >
             <MapPin className="w-3.5 h-3.5" />
             <span>Live Map ({sectorData.activeIncidents?.length || 0})</span>
@@ -391,9 +401,8 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
               <button
                 key={r}
                 onClick={() => setRadiusKm(r)}
-                className={`px-2.5 py-1 rounded-lg transition-all ${
-                  radiusKm === r ? 'bg-white text-slate-900 shadow-2xs' : 'hover:text-slate-900'
-                }`}
+                className={`px-2.5 py-1 rounded-lg transition-all ${radiusKm === r ? 'bg-white text-slate-900 shadow-2xs' : 'hover:text-slate-900'
+                  }`}
               >
                 {r} km
               </button>
@@ -608,15 +617,14 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                         </div>
 
                         <span
-                          className={`px-3 py-1 rounded-full text-xs font-bold flex-shrink-0 ${
-                            item.alertType === 'CRITICAL'
-                              ? 'bg-rose-50 text-[#EA3B52] border border-rose-200 animate-pulse'
-                              : item.alertType === 'WARNING'
+                          className={`px-3 py-1 rounded-full text-xs font-bold flex-shrink-0 ${item.alertType === 'CRITICAL'
+                            ? 'bg-rose-50 text-[#EA3B52] border border-rose-200 animate-pulse'
+                            : item.alertType === 'WARNING'
                               ? 'bg-amber-50 text-amber-700 border border-amber-200'
                               : item.alertType === 'ALERT'
-                              ? 'bg-purple-50 text-purple-700 border border-purple-200'
-                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          }`}
+                                ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            }`}
                         >
                           {item.status}
                         </span>
@@ -726,11 +734,10 @@ export default function AuthorityDashboard({ onSwitchToCitizen, authorityCoords,
                         </div>
                       </div>
                       <span
-                        className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                          amb.status === 'Ready'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-rose-50 text-rose-700 border border-rose-200'
-                        }`}
+                        className={`px-2.5 py-1 rounded-full text-xs font-bold ${amb.status === 'Ready'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-rose-50 text-rose-700 border border-rose-200'
+                          }`}
                       >
                         {amb.status}
                       </span>

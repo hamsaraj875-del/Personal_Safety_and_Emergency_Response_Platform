@@ -93,7 +93,7 @@ router.put('/me/pins', validate(updatePinsSchema), async (req, res, next) => {
     const safetyPinHash = await bcrypt.hash(safetyPin, salt);
     const duressPinHash = await bcrypt.hash(duressPin, salt);
 
-    await User.findByIdAndUpdate(req.user.id, { safetyPinHash, duressPinHash });
+    await User.findByIdAndUpdate(req.user.id, { safetyPinHash, duressPinHash, pinsSet: true });
 
     res.json({ success: true, message: 'Safety and Duress PINs successfully updated.' });
   } catch (err) {

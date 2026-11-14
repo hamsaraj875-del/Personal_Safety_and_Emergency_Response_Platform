@@ -17,12 +17,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import org.osmdroid.util.GeoPoint
+import com.google.android.gms.maps.model.LatLng as GmsLatLng
 import kotlin.math.roundToInt
 
 data class TrackingState(
-    val userGeoPoint: GeoPoint = GeoPoint(MockDataSource.DEFAULT_LATITUDE, MockDataSource.DEFAULT_LONGITUDE),
-    val responderGeoPoint: GeoPoint = GeoPoint(MockDataSource.DEFAULT_LATITUDE + 0.0035, MockDataSource.DEFAULT_LONGITUDE + 0.0025),
+    val userGeoPoint: GmsLatLng = GmsLatLng(MockDataSource.DEFAULT_LATITUDE, MockDataSource.DEFAULT_LONGITUDE),
+    val responderGeoPoint: GmsLatLng = GmsLatLng(MockDataSource.DEFAULT_LATITUDE + 0.0035, MockDataSource.DEFAULT_LONGITUDE + 0.0025),
     val responder: Responder? = null,
     val distanceMeters: Int = 400,
     val etaMinutes: Int = 3,
@@ -50,12 +50,12 @@ class TrackingViewModel(
         val incident = incidentRepository.activeIncident.value
         val userLat = incident?.latitude ?: MockDataSource.DEFAULT_LATITUDE
         val userLng = incident?.longitude ?: MockDataSource.DEFAULT_LONGITUDE
-        val userPoint = GeoPoint(userLat, userLng)
+        val userPoint = GmsLatLng(userLat, userLng)
 
         val responder = incident?.assignedResponder ?: responderRepository.findBestResponder(userLat, userLng).first
         ?: MockDataSource.getAvailableResponders(userLat, userLng).first()
 
-        val respPoint = GeoPoint(responder.latitude, responder.longitude)
+        val respPoint = GmsLatLng(responder.latitude, responder.longitude)
 
         _trackingState.value = TrackingState(
             userGeoPoint = userPoint,
@@ -104,7 +104,7 @@ class TrackingViewModel(
                     val newLng = respPoint.longitude + (dLng * 0.25)
 
                     _trackingState.value = current.copy(
-                        responderGeoPoint = GeoPoint(newLat, newLng),
+                        responderGeoPoint = GmsLatLng(newLat, newLng),
                         distanceMeters = currentDist,
                         etaMinutes = currentEta
                     )

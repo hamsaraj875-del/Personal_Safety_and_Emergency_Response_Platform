@@ -2,11 +2,13 @@ package com.jaagruth.ui.components
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
+import android.os.Handler
+import android.os.Looper
+import android.view.ViewGroup
+import android.webkit.JavascriptInterface
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,39 +25,27 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import com.jaagruth.model.LatLng
 import com.jaagruth.model.SafetyHub
 import com.jaagruth.model.VerifiedResponder
-import com.jaagruth.theme.JagrathPrimaryRed
-import org.osmdroid.config.Configuration
-import org.osmdroid.events.MapListener
-import org.osmdroid.events.ScrollEvent
-import org.osmdroid.events.ZoomEvent
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.CustomZoomButtonsController
-import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.Marker
-import org.osmdroid.views.overlay.Polyline
 
-@SuppressLint("ClickableViewAccessibility")
+private const val GOOGLE_MAPS_API_KEY = "AIzaSyC77L9nFquGR6g2Lfzys60O7fxqgVTcMDs"
+
+@SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
 @Composable
 fun LiveEmergencyMapView(
     userPos: LatLng,
@@ -67,125 +57,103 @@ fun LiveEmergencyMapView(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    var currentZoom by remember { mutableDoubleStateOf(15.5) }
+    val mainHandler = remember { Handler(Looper.getMainLooper()) }
+    var webViewRef by remember { mutableStateOf<WebView?>(null) }
 
-    val safeUserLat = if (userPos.lat == 0.0 && userPos.lng == 0.0) 12.9352 else userPos.lat.coerceIn(-85.0, 85.0)
-    val safeUserLng = if (userPos.lat == 0.0 && userPos.lng == 0.0) 77.5358 else userPos.lng.coerceIn(-180.0, 180.0)
-    val safeRespLat = if (responderPos.lat == 0.0 && responderPos.lng == 0.0) 12.9362 else responderPos.lat.coerceIn(-85.0, 85.0)
-    val safeRespLng = if (responderPos.lat == 0.0 && responderPos.lng == 0.0) 77.5368 else responderPos.lng.coerceIn(-180.0, 180.0)
+    val routeJson = remember(routePoints) {
+        routePoints.joinToString(prefix = "[", postfix = "]") { "{lat:${it.lat},lng:${it.lng}}" }
+    }
 
-    val mapView = remember {
-        Configuration.getInstance().load(context, context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE))
-        MapView(context).apply {
-            setTileSource(TileSourceFactory.MAPNIK)
-            setMultiTouchControls(true)
-            setBuiltInZoomControls(false)
-            zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
-            minZoomLevel = 5.0
-            maxZoomLevel = 19.0
-            controller.setZoom(15.5)
-            controller.setCenter(GeoPoint(safeUserLat, safeUserLng))
-
-            setOnTouchListener { v, _ ->
-                v.parent?.requestDisallowInterceptTouchEvent(true)
-                false
-            }
-
-            addMapListener(object : MapListener {
-                override fun onScroll(event: ScrollEvent?): Boolean = false
-                override fun onZoom(event: ZoomEvent?): Boolean {
-                    event?.zoomLevel?.let { currentZoom = it.toDouble() }
-                    return false
-                }
-            })
+    val hubsJson = remember(safetyHubs) {
+        safetyHubs.joinToString(prefix = "[", postfix = "]") { hub ->
+            """{"id":"${hub.id}","name":"${hub.name.replace("\"", "\\\"")}","icon":"${hub.icon}","lat":${hub.location.lat},"lng":${hub.location.lng}}"""
         }
     }
 
-    DisposableEffect(lifecycleOwner, mapView) {
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_RESUME -> mapView.onResume()
-                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
-                Lifecycle.Event.ON_DESTROY -> mapView.onDetach()
-                else -> {}
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            mapView.onDetach()
-        }
+    val htmlContent = remember(userPos, responderPos, routeJson, hubsJson) {
+        buildGoogleMapsHtml(
+            apiKey = GOOGLE_MAPS_API_KEY,
+            userLat = userPos.lat,
+            userLng = userPos.lng,
+            respLat = responderPos.lat,
+            respLng = responderPos.lng,
+            respName = activeResponder?.name ?: "1st Responder",
+            routeJson = routeJson,
+            hubsJson = hubsJson
+        )
     }
 
-    DisposableEffect(userPos, responderPos, safetyHubs, routePoints) {
-        mapView.overlays.clear()
-
-        // 1. Draw route polyline
-        if (routePoints.isNotEmpty()) {
-            val polyline = Polyline().apply {
-                val geoPoints = routePoints.map { GeoPoint(it.lat, it.lng) }
-                setPoints(geoPoints)
-                outlinePaint.color = JagrathPrimaryRed.toArgb()
-                outlinePaint.strokeWidth = 10f
-                outlinePaint.isAntiAlias = true
-            }
-            mapView.overlays.add(polyline)
-        }
-
-        // 2. User marker
-        val userMarker = Marker(mapView).apply {
-            position = GeoPoint(safeUserLat, safeUserLng)
-            title = "You are here"
-            snippet = "Live emergency location"
-            icon = createTextMarkerDrawable(context, "📍", 42)
-            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-        }
-        mapView.overlays.add(userMarker)
-
-        // 3. Responder marker
-        val responderMarker = Marker(mapView).apply {
-            position = GeoPoint(safeRespLat, safeRespLng)
-            title = activeResponder?.name ?: "1st Responder"
-            snippet = "${activeResponder?.etaMinutes ?: 4} min ETA"
-            icon = createTextMarkerDrawable(context, "🚑", 42)
-            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-        }
-        mapView.overlays.add(responderMarker)
-
-        // 4. Safety Hubs markers
-        safetyHubs.forEach { hub ->
-            val hubMarker = Marker(mapView).apply {
-                position = GeoPoint(hub.location.lat, hub.location.lng)
-                title = hub.name
-                snippet = "${hub.distanceMeters}m away • ${hub.status}"
-                icon = createTextMarkerDrawable(context, hub.icon, 36)
-                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
-                setOnMarkerClickListener { _, _ ->
-                    onSelectHub(hub)
-                    true
-                }
-            }
-            mapView.overlays.add(hubMarker)
-        }
-
-        mapView.invalidate()
-
-        onDispose {
-            // cleanup if needed
-        }
+    // Dynamic position updates without reloading entire page
+    LaunchedEffect(responderPos) {
+        webViewRef?.evaluateJavascript(
+            "if(window.updateResponder) window.updateResponder(${responderPos.lat}, ${responderPos.lng});",
+            null
+        )
     }
 
-    val canZoomIn = currentZoom < 19.0
-    val canZoomOut = currentZoom > 5.0
+    LaunchedEffect(userPos) {
+        webViewRef?.evaluateJavascript(
+            "if(window.updateUser) window.updateUser(${userPos.lat}, ${userPos.lng});",
+            null
+        )
+    }
 
     Box(modifier = modifier) {
         AndroidView(
-            factory = { mapView },
+            factory = { ctx ->
+                WebView(ctx).apply {
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+
+                    settings.apply {
+                        javaScriptEnabled = true
+                        domStorageEnabled = true
+                        loadWithOverviewMode = true
+                        useWideViewPort = true
+                        setSupportZoom(false)
+                        cacheMode = WebSettings.LOAD_DEFAULT
+                        mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                    }
+
+                    addJavascriptInterface(
+                        object {
+                            @JavascriptInterface
+                            fun onHubClicked(hubId: String) {
+                                mainHandler.post {
+                                    val matched = safetyHubs.find { it.id == hubId }
+                                    if (matched != null) {
+                                        onSelectHub(matched)
+                                    }
+                                }
+                            }
+                        },
+                        "AndroidInterface"
+                    )
+
+                    webViewClient = WebViewClient()
+
+                    setOnTouchListener { v, _ ->
+                        v.parent?.requestDisallowInterceptTouchEvent(true)
+                        false
+                    }
+
+                    loadDataWithBaseURL("https://localhost", htmlContent, "text/html", "UTF-8", null)
+                    webViewRef = this
+                }
+            },
             modifier = Modifier.fillMaxSize()
         )
 
-        // Semi-transparent dark background behind bottom-start safety hub label
+        DisposableEffect(Unit) {
+            onDispose {
+                webViewRef?.destroy()
+                webViewRef = null
+            }
+        }
+
+        // Semi-transparent dark badge showing nearest facility
         val primaryHub = safetyHubs.firstOrNull { it.type == "hospital" } ?: safetyHubs.firstOrNull()
         if (primaryHub != null) {
             Surface(
@@ -212,7 +180,7 @@ fun LiveEmergencyMapView(
             }
         }
 
-        // On-map Zoom In / Zoom Out Controls (+ / −)
+        // Floating Zoom In / Zoom Out Controls (+ / −)
         Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -224,24 +192,18 @@ fun LiveEmergencyMapView(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .clickable(enabled = canZoomIn) {
-                        if (canZoomIn) {
-                            mapView.controller.zoomIn()
-                            currentZoom = (currentZoom + 1.0).coerceAtMost(19.0)
-                        }
+                    .clickable {
+                        webViewRef?.evaluateJavascript("if(window.zoomIn) window.zoomIn();", null)
                     },
                 shape = RoundedCornerShape(8.dp),
-                color = if (canZoomIn) Color(0xEE0F172A) else Color(0x660F172A),
-                border = BorderStroke(
-                    1.dp,
-                    if (canZoomIn) Color(0x44FFFFFF) else Color(0x1FFFFFFF)
-                ),
+                color = Color(0xEE0F172A),
+                border = BorderStroke(1.dp, Color(0x44FFFFFF)),
                 shadowElevation = 4.dp
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                     Text(
                         text = "+",
-                        color = if (canZoomIn) Color.White else Color(0x66FFFFFF),
+                        color = Color.White,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -253,24 +215,18 @@ fun LiveEmergencyMapView(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .clickable(enabled = canZoomOut) {
-                        if (canZoomOut) {
-                            mapView.controller.zoomOut()
-                            currentZoom = (currentZoom - 1.0).coerceAtLeast(5.0)
-                        }
+                    .clickable {
+                        webViewRef?.evaluateJavascript("if(window.zoomOut) window.zoomOut();", null)
                     },
                 shape = RoundedCornerShape(8.dp),
-                color = if (canZoomOut) Color(0xEE0F172A) else Color(0x660F172A),
-                border = BorderStroke(
-                    1.dp,
-                    if (canZoomOut) Color(0x44FFFFFF) else Color(0x1FFFFFFF)
-                ),
+                color = Color(0xEE0F172A),
+                border = BorderStroke(1.dp, Color(0x44FFFFFF)),
                 shadowElevation = 4.dp
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                     Text(
                         text = "−",
-                        color = if (canZoomOut) Color.White else Color(0x66FFFFFF),
+                        color = Color.White,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -280,15 +236,134 @@ fun LiveEmergencyMapView(
     }
 }
 
-private fun createTextMarkerDrawable(context: Context, emoji: String, sizePx: Int): Drawable {
-    val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(bitmap)
-    val paint = Paint().apply {
-        textSize = (sizePx * 0.75).toFloat()
-        textAlign = Paint.Align.CENTER
-        isAntiAlias = true
-    }
-    val yPos = ((canvas.height / 2) - ((paint.descent() + paint.ascent()) / 2))
-    canvas.drawText(emoji, (canvas.width / 2).toFloat(), yPos, paint)
-    return BitmapDrawable(context.resources, bitmap)
+private fun buildGoogleMapsHtml(
+    apiKey: String,
+    userLat: Double,
+    userLng: Double,
+    respLat: Double,
+    respLng: Double,
+    respName: String,
+    routeJson: String,
+    hubsJson: String
+): String {
+    return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                html, body, #map { width: 100%; height: 100%; background: #f8fafc; overflow: hidden; }
+            </style>
+            <script src="https://maps.googleapis.com/maps/api/js?key=$apiKey&libraries=geometry"></script>
+        </head>
+        <body>
+            <div id="map"></div>
+            <script>
+                var map;
+                var userMarker;
+                var respMarker;
+                var polyline;
+
+                function initMap() {
+                    var userLoc = { lat: $userLat, lng: $userLng };
+                    var respLoc = { lat: $respLat, lng: $respLng };
+
+                    map = new google.maps.Map(document.getElementById('map'), {
+                        center: userLoc,
+                        zoom: 15,
+                        disableDefaultUI: true,
+                        zoomControl: false,
+                        mapTypeControl: false,
+                        streetViewControl: false,
+                        fullscreenControl: false,
+                        gestureHandling: 'greedy'
+                    });
+
+                    // 1. Draw emergency route
+                    var routePoints = $routeJson;
+                    if (routePoints && routePoints.length > 0) {
+                        polyline = new google.maps.Polyline({
+                            path: routePoints,
+                            geodesic: true,
+                            strokeColor: '#EA3B52',
+                            strokeOpacity: 0.9,
+                            strokeWeight: 6,
+                            map: map
+                        });
+                    }
+
+                    // 2. User Location Marker (Red Pin with pulse)
+                    userMarker = new google.maps.Marker({
+                        position: userLoc,
+                        map: map,
+                        title: "You are here",
+                        zIndex: 200,
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 9,
+                            fillColor: '#EA3B52',
+                            fillOpacity: 1,
+                            strokeColor: '#FFFFFF',
+                            strokeWeight: 3
+                        }
+                    });
+
+                    // 3. Responder Marker (Ambulance emoji)
+                    respMarker = new google.maps.Marker({
+                        position: respLoc,
+                        map: map,
+                        title: "${respName.replace("\"", "\\\"")}",
+                        zIndex: 210,
+                        label: {
+                            text: '🚑',
+                            fontSize: '24px'
+                        }
+                    });
+
+                    // 4. Safety Hubs Markers
+                    var hubs = $hubsJson;
+                    if (hubs && hubs.length > 0) {
+                        hubs.forEach(function(hub) {
+                            var m = new google.maps.Marker({
+                                position: { lat: hub.lat, lng: hub.lng },
+                                map: map,
+                                title: hub.name,
+                                zIndex: 150,
+                                label: {
+                                    text: hub.icon || '🏥',
+                                    fontSize: '18px'
+                                }
+                            });
+                            m.addListener('click', function() {
+                                if (window.AndroidInterface) {
+                                    window.AndroidInterface.onHubClicked(hub.id);
+                                }
+                            });
+                        });
+                    }
+                }
+
+                window.zoomIn = function() {
+                    if (map) map.setZoom(map.getZoom() + 1);
+                };
+
+                window.zoomOut = function() {
+                    if (map) map.setZoom(map.getZoom() - 1);
+                };
+
+                window.updateResponder = function(lat, lng) {
+                    if (respMarker) respMarker.setPosition({ lat: lat, lng: lng });
+                };
+
+                window.updateUser = function(lat, lng) {
+                    if (userMarker) userMarker.setPosition({ lat: lat, lng: lng });
+                };
+
+                window.onload = initMap;
+            </script>
+        </body>
+        </html>
+    """.trimIndent()
 }

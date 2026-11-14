@@ -147,7 +147,7 @@ Mutating incident calls accept an `Idempotency-Key` header.
 
 ## 5. Realtime (`wss://host/ws?token=JWT`)
 
-Server → client messages: `{type, data, ts}`
+Server → client messages: `{type, payload, data, ts}`. `payload` is the canonical event field; `data` remains as a temporary compatibility alias. Greeting, pong, and error envelopes follow the same shape.
 
 | type | sent to | data |
 |---|---|---|
@@ -159,7 +159,7 @@ Server → client messages: `{type, data, ts}`
 | `authority.alert` | authorities | `{incidentId, severity, duress, siren:true}` (ladder step 4 and duress) |
 | `ledger.block` | owner, authorities | new block |
 
-Client → server: `{type:'ping'}`, `{type:'location', incidentId, lat, lng, accuracy, battery}`.
+Client → server: `{type:'ping'}`, `{type:'location', incidentId, lat, lng, accuracy, battery}`. Room subscription messages are unnecessary: the server filters incident broadcasts by owner, assigned responder, and authority/admin role. Authenticated sockets receive server pings every 25 seconds and stale sockets are terminated.
 Authorities are scoped to their sector; a citizen only ever receives their own incidents.
 
 ---

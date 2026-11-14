@@ -6,7 +6,8 @@ export function idempotency() {
     if (!key) return next();
 
     try {
-      const existing = await IdempotencyKey.findOne({ key });
+      const scopedKey = `${req.user?.id || 'anonymous'}:${key}`;
+      const existing = await IdempotencyKey.findOne({ key: scopedKey });
       if (existing) {
         return res.status(existing.statusCode).json(existing.response);
       }
@@ -16,7 +17,7 @@ export function idempotency() {
       res.json = body => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           IdempotencyKey.create({
-            key,
+            key: scopedKey,
             statusCode: res.statusCode,
             response: body
           }).catch(err => console.error('Failed to save idempotency key:', err.message));

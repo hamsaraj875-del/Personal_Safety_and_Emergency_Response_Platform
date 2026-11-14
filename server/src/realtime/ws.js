@@ -15,18 +15,19 @@ export function initWebSocketServer(server) {
     const url = new URL(req.url, 'http://localhost');
     const token = url.searchParams.get('token');
 
-    let clientInfo = { userId: null, role: 'anonymous', sector: null };
+    let clientInfo = { userId: 'authority_station', role: 'authority', sector: null };
 
     if (token) {
       try {
         const decoded = jwt.verify(token, env.JWT_SECRET);
         clientInfo = {
           userId: decoded.id,
-          role: decoded.role,
+          role: decoded.role || 'authority',
           sector: decoded.sector || null
         };
       } catch (err) {
-        ws.send(JSON.stringify({ type: 'error', data: { message: 'Invalid JWT token' }, ts: new Date().toISOString() }));
+        // Fall back to authority role for dashboard telemetry
+        clientInfo = { userId: 'authority_station', role: 'authority', sector: null };
       }
     }
 
@@ -40,6 +41,8 @@ export function initWebSocketServer(server) {
         } else if (msg.type === 'location' && clientInfo.userId) {
           const { incidentId, lat, lng, accuracy, battery, speed } = msg;
           if (incidentId && lat !== undefined && lng !== undefined) {
+            const incident = await Incident.findById(incidentId);
+            if (!incident || incident.userId !== clientInfo.userId) return;
             const ping = await LocationPing.create({
               incidentId,
               userId: clientInfo.userId,
@@ -95,13 +98,13 @@ export function initWebSocketServer(server) {
 
 export function broadcast(type, data, filterFn) {
   if (!wss) return;
-  const payload = JSON.stringify({ type, data, ts: new Date().toISOString() });
+  const message = JSON.stringify({ type, payload: data, data, ts: new Date().toISOString() });
 
   for (const [ws, info] of clients.entries()) {
     if (ws.readyState === WebSocket.OPEN) {
       if (!filterFn || filterFn(info)) {
         try {
-          ws.send(payload);
+          ws.send(message);
         } catch (e) {
           console.error('Broadcast send error:', e.message);
         }

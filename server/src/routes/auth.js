@@ -9,8 +9,47 @@ import { validate } from '../middleware/validate.js';
 import { AppError } from '../middleware/error.js';
 import { normalizePhone } from '../utils/phone.js';
 import { authLimiter } from '../middleware/rateLimit.js';
+import { Responder } from '../models/Responder.js';
 
 const router = express.Router();
+const otpChallenges = new Map();
+
+router.post('/auth/otp/request', authLimiter, async (req, res, next) => {
+  try {
+    const phone = normalizePhone(String(req.body.phone || ''));
+    if (phone.length < 8) throw new AppError('A valid phone number is required.', 'VALIDATION_ERROR', 400);
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    otpChallenges.set(phone, { code, expiresAt: Date.now() + 5 * 60 * 1000 });
+    res.json({ success: true, ...(env.DEMO_MODE ? { code } : {}) });
+  } catch (err) { next(err); }
+});
+
+router.post('/auth/otp/verify', authLimiter, async (req, res, next) => {
+  try {
+    const phone = normalizePhone(String(req.body.phone || ''));
+    const challenge = otpChallenges.get(phone);
+    if (!challenge || challenge.expiresAt < Date.now() || challenge.code !== String(req.body.code || '')) throw new AppError('Invalid or expired OTP.', 'INVALID_OTP', 401);
+    otpChallenges.delete(phone);
+    let user = await User.findOne({ phoneNormalized: phone });
+    if (!user) {
+      user = await User.create({ name: String(req.body.name || 'Citizen').trim() || 'Citizen', phone: String(req.body.phone), phoneNormalized: phone, passwordHash: await bcrypt.hash(jwt.sign({ phone, at: Date.now() }, env.JWT_SECRET), 10), address: req.body.address || undefined, pinsSet: false });
+    }
+    const token = jwt.sign({ id: user.id, role: user.role, name: user.name }, env.JWT_SECRET, { expiresIn: '7d' });
+    const userJson = user.toJSON();
+    for (const field of ['passwordHash', 'safetyPinHash', 'duressPinHash']) delete userJson[field];
+    res.json({ token, user: userJson });
+  } catch (err) { next(err); }
+});
+
+router.post('/auth/responder/login', authLimiter, async (req, res, next) => {
+  try {
+    const phone = normalizePhone(String(req.body.phone || ''));
+    const responder = await Responder.findOne({ phone });
+    if (!responder || !responder.passwordHash || !(await bcrypt.compare(String(req.body.password || ''), responder.passwordHash))) throw new AppError('Invalid responder credentials.', 'INVALID_CREDENTIALS', 401);
+    const token = jwt.sign({ id: responder.id, role: 'responder', name: responder.name }, env.JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, responder });
+  } catch (err) { next(err); }
+});
 
 const registerSchema = z.object({
   name: z.string().min(2),
@@ -46,8 +85,6 @@ router.post('/auth/register', authLimiter, validate(registerSchema), async (req,
 
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
-    const safetyPinHash = await bcrypt.hash('1234', salt);
-    const duressPinHash = await bcrypt.hash('9999', salt);
 
     const user = await User.create({
       name,
@@ -55,13 +92,12 @@ router.post('/auth/register', authLimiter, validate(registerSchema), async (req,
       phoneNormalized,
       email: email ? email.toLowerCase() : undefined,
       passwordHash,
-      safetyPinHash,
-      duressPinHash,
+      pinsSet: false,
       role: 'citizen'
     });
 
     const token = jwt.sign({ id: user.id, role: user.role, name: user.name }, env.JWT_SECRET, {
-      expiresIn: '30d'
+      expiresIn: '7d'
     });
 
     const userJson = user.toJSON();
@@ -94,7 +130,7 @@ router.post('/auth/login', authLimiter, validate(loginSchema), async (req, res, 
     }
 
     const token = jwt.sign({ id: user.id, role: user.role, name: user.name }, env.JWT_SECRET, {
-      expiresIn: '30d'
+      expiresIn: '7d'
     });
 
     const userJson = user.toJSON();

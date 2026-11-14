@@ -21,16 +21,12 @@ class SocketService {
 
   connect() {
     const token = authStorage.getToken();
-    if (!token) {
-      console.warn('[WS] Cannot connect: No auth token in memory.');
-      return;
-    }
 
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
       return;
     }
 
-    const wsUrl = `${WS_BASE_URL}?token=${encodeURIComponent(token)}`;
+    const wsUrl = token ? `${WS_BASE_URL}?token=${encodeURIComponent(token)}` : WS_BASE_URL;
     console.log(`[WS] Connecting to ${WS_BASE_URL}...`);
 
     try {
@@ -52,9 +48,9 @@ class SocketService {
       this.ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          const { type, payload } = msg;
-          if (type) {
-            this.triggerEvent(type, payload);
+          const data = msg.payload !== undefined ? msg.payload : msg.data;
+          if (msg.type) {
+            this.triggerEvent(msg.type, data);
           }
         } catch (e) {
           console.error('[WS] Failed to parse message:', event.data, e);

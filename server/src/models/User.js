@@ -17,6 +17,7 @@ const userSchema = new mongoose.Schema(
     address: { type: String, default: 'BMSCE Campus, Bull Temple Rd, Basavanagudi, Bengaluru, KA 560019' },
     safetyPinHash: { type: String, default: '' },
     duressPinHash: { type: String, default: '' },
+    pinsSet: { type: Boolean, default: false },
     role: { type: String, enum: ['citizen', 'responder', 'authority', 'admin'], default: 'citizen' },
     deviceTokens: [
       {

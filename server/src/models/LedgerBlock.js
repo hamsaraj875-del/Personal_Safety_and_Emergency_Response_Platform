@@ -14,7 +14,7 @@ const ledgerBlockSchema = new mongoose.Schema(
     payload: { type: mongoose.Schema.Types.Mixed, required: true },
     tampered: { type: Boolean, default: false }
   },
-  { timestamps: true }
+  { timestamps: true, minimize: false }
 );
 
 ledgerBlockSchema.index({ incidentId: 1, index: 1 }, { unique: true });
