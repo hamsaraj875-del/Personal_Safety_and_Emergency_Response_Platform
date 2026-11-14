@@ -1,21 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, MessageSquare, ChevronLeft, ShieldCheck, Navigation, Crosshair, AlertCircle, Key, Info } from 'lucide-react';
-import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
-import GoogleMapsRoutePolyline from './GoogleMapsRoutePolyline';
-import { GOOGLE_MAPS_API_KEY, GOOGLE_MAPS_ID, GOOGLE_MAPS_ATTRIBUTION } from '../constants/mapsConfig';
-import { MAP_CONFIG, VERIFIED_RESPONDERS, getSurroundingSafetyHubs } from '../constants/initialData';
+import { Phone, MessageSquare, ChevronLeft, ShieldCheck, Navigation, Crosshair, AlertCircle } from 'lucide-react';
+import LiveEmergencyMap from './LiveEmergencyMap';
+import { MAP_CONFIG, getNearbyResponders, getSurroundingSafetyHubs, getLocalRoutePoints } from '../constants/initialData';
 import { getCurrentDeviceLocation, requestLocationPermission, reverseGeocodeCoords } from '../services/locationService';
-
-// Controller to smoothly pan the Google Map when center changes
-function CameraController({ center }) {
-  const map = useMap();
-  useEffect(() => {
-    if (map && center) {
-      map.panTo(center);
-    }
-  }, [map, center]);
-  return null;
-}
 
 export default function MapTrackingView({
   onBack,
@@ -26,85 +13,60 @@ export default function MapTrackingView({
   userCoords,
   onUpdateUserCoords
 }) {
-  const activeResp = currentResponder || VERIFIED_RESPONDERS[0];
-
-  // API Key handling
-  const [apiKey] = useState(() => {
-    return import.meta.env.VITE_GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY;
-  });
-
   // Live User Location state
   const [userPos, setUserPos] = useState(() => {
     if (userCoords?.lat && userCoords?.lng) return userCoords;
     return { lat: MAP_CONFIG.userPos[0], lng: MAP_CONFIG.userPos[1] };
   });
 
-  const [responderPos] = useState({
-    lat: MAP_CONFIG.responderPos[0],
-    lng: MAP_CONFIG.responderPos[1]
-  });
+  const localResponders = getNearbyResponders(userPos);
+  const activeResp = currentResponder || localResponders[0];
+  const [responderPos, setResponderPos] = useState(() => activeResp.location);
 
   // Surrounding emergency hubs around user
   const [safetyHubs, setSafetyHubs] = useState(() => getSurroundingSafetyHubs(userPos));
   const [selectedHub, setSelectedHub] = useState(null);
-
-  const [routePoints, setRoutePoints] = useState(() => {
-    return [
-      { lat: MAP_CONFIG.responderPos[0], lng: MAP_CONFIG.responderPos[1] },
-      { lat: (MAP_CONFIG.responderPos[0] + userPos.lat) / 2 + 0.001, lng: (MAP_CONFIG.responderPos[1] + userPos.lng) / 2 - 0.001 },
-      userPos
-    ];
-  });
-
+  const [routePoints, setRoutePoints] = useState(() => getLocalRoutePoints(userPos, responderPos));
   const [isLocating, setIsLocating] = useState(false);
-  const [locationStatus, setLocationStatus] = useState("Live GPS Ready");
 
-  // Keep surrounding hubs synced with userCoords
+  // Keep surrounding hubs and route synced with userCoords
   useEffect(() => {
     if (userCoords?.lat && userCoords?.lng) {
       setUserPos(userCoords);
+      const updatedNearby = getNearbyResponders(userCoords);
+      const resp = currentResponder || updatedNearby[0];
+      setResponderPos(resp.location);
       setSafetyHubs(getSurroundingSafetyHubs(userCoords));
-      setRoutePoints([
-        responderPos,
-        { lat: (responderPos.lat + userCoords.lat) / 2 + 0.001, lng: (responderPos.lng + userCoords.lng) / 2 - 0.001 },
-        userCoords
-      ]);
+      setRoutePoints(getLocalRoutePoints(userCoords, resp.location));
     }
-  }, [userCoords, responderPos]);
+  }, [userCoords, currentResponder]);
 
   // Fetch real device location with user permission
   const handleFetchCurrentLocation = async () => {
     setIsLocating(true);
-    setLocationStatus("Requesting GPS Permission...");
-
     try {
       const perm = await requestLocationPermission();
       if (!perm.granted) {
-        setLocationStatus("Permission Denied");
         alert(perm.error || "Please allow location access to pinpoint your emergency coordinates.");
         setIsLocating(false);
         return;
       }
 
-      setLocationStatus("Pinpointing Device Location...");
       const coords = await getCurrentDeviceLocation();
       const newPos = { lat: coords.lat, lng: coords.lng };
       setUserPos(newPos);
       if (onUpdateUserCoords) onUpdateUserCoords(newPos);
-      setSafetyHubs(getSurroundingSafetyHubs(newPos));
 
-      setRoutePoints([
-        responderPos,
-        { lat: (responderPos.lat + newPos.lat) / 2 + 0.001, lng: (responderPos.lng + newPos.lng) / 2 - 0.001 },
-        newPos
-      ]);
+      const updatedNearby = getNearbyResponders(newPos);
+      const resp = currentResponder || updatedNearby[0];
+      setResponderPos(resp.location);
+      setSafetyHubs(getSurroundingSafetyHubs(newPos));
+      setRoutePoints(getLocalRoutePoints(newPos, resp.location));
 
       const addr = await reverseGeocodeCoords(coords.lat, coords.lng);
-      setLocationStatus(`Live: ${coords.accuracy ? `±${Math.round(coords.accuracy)}m` : 'Accurate'}`);
       alert(`Location Acquired!\nLatitude: ${coords.lat.toFixed(5)}\nLongitude: ${coords.lng.toFixed(5)}\nAddress: ${addr}`);
     } catch (err) {
       console.error("Failed to get device location:", err);
-      setLocationStatus("GPS Timeout · Using Backup");
       alert("Unable to fetch device GPS. Please check location settings.");
     } finally {
       setIsLocating(false);
@@ -125,7 +87,7 @@ export default function MapTrackingView({
           </button>
 
           <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-            ● Google Maps Active
+            ● Live Local Dispatch Active
           </span>
         </div>
 
@@ -134,7 +96,7 @@ export default function MapTrackingView({
         </h1>
 
         <p className="text-[12px] text-slate-500 mt-0.5 leading-snug">
-          Live Google Maps tracking with certified first-aid escorts.
+          Approaching from ~{activeResp.distanceKm || 0.9} km away. Tap surrounding hubs to inspect.
         </p>
 
         <button
@@ -145,90 +107,22 @@ export default function MapTrackingView({
         </button>
       </div>
 
-      {/* Main Map Container */}
+      {/* Main Map Container (LiveEmergencyMap with Leaflet zero-watermark + Google Maps toggle) */}
       <div className="relative flex-1 w-full bg-slate-100 overflow-hidden">
-        {/* Google Maps Container */}
-        <APIProvider apiKey={apiKey} libraries={['marker', 'geometry']}>
-          <Map
-            mapId={GOOGLE_MAPS_ID}
-            internalUsageAttributionIds={GOOGLE_MAPS_ATTRIBUTION}
-            defaultCenter={userPos}
-            defaultZoom={15}
-            gestureHandling="greedy"
-            disableDefaultUI={true}
-            className="w-full h-full"
-            style={{ width: '100%', height: '100%' }}
-          >
-            <CameraController center={userPos} />
+        <LiveEmergencyMap
+          userPos={userPos}
+          responderPos={responderPos}
+          safetyHubs={safetyHubs}
+          routePoints={routePoints}
+          activeResp={activeResp}
+          onSelectHub={setSelectedHub}
+          isLocating={isLocating}
+          onLocateMe={handleFetchCurrentLocation}
+        />
 
-            {/* 1. "You are here" Custom Advanced Marker */}
-            <AdvancedMarker position={userPos} title="You are here">
-              <div className="relative flex flex-col items-center cursor-pointer">
-                <div className="px-3 py-1 bg-white text-slate-900 rounded-full shadow-lg border border-slate-200 text-[11px] font-bold mb-1 whitespace-nowrap">
-                  You are here
-                </div>
-                <div className="relative w-6 h-6 flex items-center justify-center">
-                  <div className="absolute w-6 h-6 bg-rose-500/30 rounded-full animate-ping" />
-                  <div className="w-4 h-4 bg-[#EA3B52] border-2 border-white rounded-full shadow-md z-10" />
-                </div>
-              </div>
-            </AdvancedMarker>
-
-            {/* 2. "1st Responder" Advanced Marker */}
-            <AdvancedMarker position={responderPos} title={`${activeResp.name} (1st Responder)`}>
-              <div className="relative flex flex-col items-center cursor-pointer">
-                <div className="px-3 py-1 bg-slate-900 text-white rounded-full shadow-lg text-[11px] font-bold mb-1 whitespace-nowrap flex items-center gap-1">
-                  <span>1st Responder</span>
-                  <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                </div>
-                <div className="w-4 h-4 bg-slate-700 border-2 border-white rounded-full shadow-md" />
-              </div>
-            </AdvancedMarker>
-
-            {/* 3. Surrounding Safety Hubs Markers */}
-            {safetyHubs.map((hub) => (
-              <AdvancedMarker
-                key={hub.id}
-                position={hub.location}
-                title={hub.name}
-                onClick={() => setSelectedHub(hub)}
-              >
-                <div className="relative flex flex-col items-center cursor-pointer hover:scale-110 transition-transform">
-                  <div className="w-8 h-8 rounded-full bg-white shadow-lg border-2 border-slate-900 flex items-center justify-center text-sm">
-                    {hub.icon}
-                  </div>
-                  <div className="px-2 py-0.5 bg-slate-900 text-white rounded-full text-[9px] font-bold mt-1 shadow-sm whitespace-nowrap">
-                    {hub.category} ({hub.distanceMeters}m)
-                  </div>
-                </div>
-              </AdvancedMarker>
-            ))}
-
-            {/* 4. Red Route Polyline */}
-            <GoogleMapsRoutePolyline path={routePoints} color="#EA3B52" weight={4.5} />
-          </Map>
-        </APIProvider>
-
-        {/* Live GPS Status Pill */}
-        <div className="absolute top-3 left-3 z-[10] bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full shadow-md border border-slate-100 flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-[11px] font-bold text-slate-700">{locationStatus}</span>
-        </div>
-
-        {/* Live "Locate Me" Button */}
-        <button
-          onClick={handleFetchCurrentLocation}
-          disabled={isLocating}
-          className="absolute top-3 right-3 z-[10] bg-white hover:bg-slate-50 text-slate-800 px-3 py-1.5 rounded-full shadow-lg border border-slate-200 flex items-center gap-1.5 active:scale-95 transition-all"
-          title="Fetch Real Device Location"
-        >
-          <Crosshair className={`w-3.5 h-3.5 text-[#EA3B52] ${isLocating ? 'animate-spin' : ''}`} />
-          <span className="text-[11px] font-bold">{isLocating ? 'Locating...' : 'Locate Me'}</span>
-        </button>
-
-        {/* Surrounding Hub Details Card */}
+        {/* Selected Hub Card */}
         {selectedHub && (
-          <div className="absolute top-14 left-3 right-3 z-[20] bg-white text-slate-900 p-3.5 rounded-2xl shadow-floating border border-slate-200 flex items-center justify-between animate-fadeIn">
+          <div className="absolute top-14 left-3 right-3 z-[1000] bg-white text-slate-900 p-3.5 rounded-2xl shadow-floating border border-slate-200 flex items-center justify-between animate-fadeIn">
             <div className="flex items-center gap-3">
               <span className="text-2xl">{selectedHub.icon}</span>
               <div>
@@ -291,7 +185,7 @@ export default function MapTrackingView({
                   <ShieldCheck className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                 </div>
                 <p className="text-[11px] text-slate-500 font-medium">
-                  {activeResp.title} • ({activeResp.etaMinutes} min away)
+                  {activeResp.title} • ({activeResp.etaMinutes} min away · {activeResp.distanceKm} km)
                 </p>
               </div>
             </div>

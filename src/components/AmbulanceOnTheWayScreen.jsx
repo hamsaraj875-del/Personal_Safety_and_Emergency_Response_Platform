@@ -1,21 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ShieldAlert, Navigation, Phone, ShieldCheck, MapPin, Crosshair, AlertCircle } from 'lucide-react';
-import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
-import GoogleMapsRoutePolyline from './GoogleMapsRoutePolyline';
-import AmbulanceIllustration from './AmbulanceIllustration';
-import { GOOGLE_MAPS_API_KEY, GOOGLE_MAPS_ID, GOOGLE_MAPS_ATTRIBUTION } from '../constants/mapsConfig';
-import { MAP_CONFIG, VERIFIED_RESPONDERS, getSurroundingSafetyHubs } from '../constants/initialData';
+import LiveEmergencyMap from './LiveEmergencyMap';
+import { MAP_CONFIG, getNearbyResponders, getSurroundingSafetyHubs, getLocalRoutePoints } from '../constants/initialData';
 import { getCurrentDeviceLocation, requestLocationPermission, reverseGeocodeCoords } from '../services/locationService';
-
-function CameraPan({ center }) {
-  const map = useMap();
-  useEffect(() => {
-    if (map && center) {
-      map.panTo(center);
-    }
-  }, [map, center]);
-  return null;
-}
 
 export default function AmbulanceOnTheWayScreen({
   onBack,
@@ -29,48 +16,39 @@ export default function AmbulanceOnTheWayScreen({
   onCall,
   onRequestLocationPermission
 }) {
-  const responder = activeResponder || VERIFIED_RESPONDERS[0];
-
-  // User position
+  // 1. Live User position (Defaults to campus or actual device GPS)
   const [pos, setPos] = useState(() => {
     if (userCoords?.lat && userCoords?.lng) return userCoords;
     return { lat: MAP_CONFIG.userPos[0], lng: MAP_CONFIG.userPos[1] };
   });
 
-  const [responderPos] = useState({
-    lat: MAP_CONFIG.responderPos[0],
-    lng: MAP_CONFIG.responderPos[1]
-  });
+  // 2. Dynamically calculate Local Responder in the SAME neighborhood/city as user
+  const localResponders = getNearbyResponders(pos);
+  const responder = activeResponder || localResponders[0];
+  const [responderPos, setResponderPos] = useState(() => responder.location);
 
-  // Surrounding emergency hubs
+  // 3. Surrounding emergency hubs relative to user's real location
   const [safetyHubs, setSafetyHubs] = useState(() => getSurroundingSafetyHubs(pos));
   const [selectedHub, setSelectedHub] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
-  const [locationStatus, setLocationStatus] = useState("Live GPS Ready");
 
-  // Route points
-  const [route, setRoute] = useState(() => [
-    { lat: MAP_CONFIG.responderPos[0], lng: MAP_CONFIG.responderPos[1] },
-    { lat: (MAP_CONFIG.responderPos[0] + pos.lat) / 2 + 0.001, lng: (MAP_CONFIG.responderPos[1] + pos.lng) / 2 - 0.001 },
-    pos
-  ]);
+  // 4. Street-level Route Polyline connecting local responder to user
+  const [route, setRoute] = useState(() => getLocalRoutePoints(pos, responder.location));
 
-  // Keep safety hubs synced when coordinates change
+  // Sync positions whenever userCoords change
   useEffect(() => {
     if (userCoords?.lat && userCoords?.lng) {
       setPos(userCoords);
+      const updatedNearby = getNearbyResponders(userCoords);
+      const activeResp = activeResponder || updatedNearby[0];
+      setResponderPos(activeResp.location);
       setSafetyHubs(getSurroundingSafetyHubs(userCoords));
-      setRoute([
-        responderPos,
-        { lat: (responderPos.lat + userCoords.lat) / 2 + 0.001, lng: (responderPos.lng + userCoords.lng) / 2 - 0.001 },
-        userCoords
-      ]);
+      setRoute(getLocalRoutePoints(userCoords, activeResp.location));
     }
-  }, [userCoords, responderPos]);
+  }, [userCoords, activeResponder]);
 
   const handleLocateMe = async () => {
     setIsLocating(true);
-    setLocationStatus("Locating...");
     try {
       const perm = await requestLocationPermission();
       if (!perm.granted) {
@@ -86,11 +64,14 @@ export default function AmbulanceOnTheWayScreen({
       const newPos = { lat: coords.lat, lng: coords.lng };
       setPos(newPos);
       if (onUpdateUserCoords) onUpdateUserCoords(newPos);
+
+      // Dynamically reposition responder & hubs to user's local neighborhood
+      const updatedNearby = getNearbyResponders(newPos);
+      setResponderPos(updatedNearby[0].location);
       setSafetyHubs(getSurroundingSafetyHubs(newPos));
-      setLocationStatus("Live GPS Synced");
+      setRoute(getLocalRoutePoints(newPos, updatedNearby[0].location));
     } catch (err) {
       console.warn("GPS sync error:", err);
-      setLocationStatus("GPS Timeout");
     } finally {
       setIsLocating(false);
     }
@@ -122,7 +103,7 @@ export default function AmbulanceOnTheWayScreen({
           </span>
         </div>
 
-        {/* Locate Me Trigger */}
+        {/* Quick GPS Refresh */}
         <button
           onClick={handleLocateMe}
           className="bg-white/15 hover:bg-white/25 px-2.5 py-1 rounded-full text-[11px] font-bold text-white flex items-center gap-1 border border-white/20 active:scale-95 transition-all"
@@ -134,84 +115,30 @@ export default function AmbulanceOnTheWayScreen({
 
       {/* Main Title Banner */}
       <div className="px-5 pb-1 z-10 flex-shrink-0 text-left">
-        <h1 className="text-[20px] font-extrabold tracking-tight leading-tight text-white drop-shadow-sm flex items-center gap-2">
-          <span>Ambulance & responders on the way</span>
+        <h1 className="text-[19px] sm:text-[21px] font-extrabold tracking-tight leading-tight text-white drop-shadow-sm">
+          Ambulance & responders on the way
         </h1>
         <p className="text-[11px] text-white/90 leading-snug mt-0.5">
-          Speak calmly until responders arrive. Surrounding emergency facilities mapped below.
+          Approaching from your local sector (~{responder.distanceKm || 0.9} km away). Surrounding safety hubs mapped below.
         </p>
       </div>
 
-      {/* Embedded Google Map Container */}
+      {/* Embedded Live Map Container (Zero-Watermark Emergency Map with Google Maps toggle) */}
       <div className="relative flex-1 w-full my-1 rounded-2xl overflow-hidden border-y border-white/15 shadow-inner bg-slate-900">
-        <APIProvider apiKey={GOOGLE_MAPS_API_KEY} libraries={['marker', 'geometry']}>
-          <Map
-            mapId={GOOGLE_MAPS_ID}
-            internalUsageAttributionIds={GOOGLE_MAPS_ATTRIBUTION}
-            defaultCenter={pos}
-            defaultZoom={15}
-            gestureHandling="greedy"
-            disableDefaultUI={true}
-            style={{ width: '100%', height: '100%' }}
-          >
-            <CameraPan center={pos} />
-
-            {/* 1. Live User Marker */}
-            <AdvancedMarker position={pos} title="Your Live Location">
-              <div className="relative flex flex-col items-center cursor-pointer">
-                <div className="px-2 py-0.5 bg-white text-slate-900 rounded-full shadow-lg border border-slate-200 text-[10px] font-extrabold mb-0.5 whitespace-nowrap">
-                  You are here
-                </div>
-                <div className="relative w-5 h-5 flex items-center justify-center">
-                  <div className="absolute w-5 h-5 bg-rose-500/40 rounded-full animate-ping" />
-                  <div className="w-3.5 h-3.5 bg-[#EA3B52] border-2 border-white rounded-full shadow-md z-10" />
-                </div>
-              </div>
-            </AdvancedMarker>
-
-            {/* 2. Approaching Ambulance / 1st Responder */}
-            <AdvancedMarker position={responderPos} title={`${responder.name} (Approaching)`}>
-              <div className="relative flex flex-col items-center cursor-pointer animate-bounce">
-                <div className="px-2 py-0.5 bg-rose-600 text-white rounded-full shadow-lg text-[10px] font-bold mb-0.5 whitespace-nowrap flex items-center gap-1 border border-white">
-                  <span>🚑 Ambulance ({responder.etaMinutes}m)</span>
-                </div>
-                <div className="w-4 h-4 bg-white border-2 border-rose-600 rounded-full shadow-md" />
-              </div>
-            </AdvancedMarker>
-
-            {/* 3. Surrounding Safety Hubs Markers */}
-            {safetyHubs.map((hub) => (
-              <AdvancedMarker
-                key={hub.id}
-                position={hub.location}
-                title={hub.name}
-                onClick={() => setSelectedHub(hub)}
-              >
-                <div className="relative flex flex-col items-center cursor-pointer hover:scale-110 transition-transform">
-                  <div className="w-7 h-7 rounded-full bg-white shadow-md border-2 border-slate-800 flex items-center justify-center text-xs">
-                    {hub.icon}
-                  </div>
-                  <div className="px-1.5 py-0.2 bg-slate-900/90 text-white rounded text-[8px] font-bold mt-0.5 whitespace-nowrap">
-                    {hub.distanceMeters}m
-                  </div>
-                </div>
-              </AdvancedMarker>
-            ))}
-
-            {/* 4. Active Route Polyline */}
-            <GoogleMapsRoutePolyline path={route} color="#FFFFFF" weight={4} />
-          </Map>
-        </APIProvider>
-
-        {/* Live Surrounding Hubs Pill Overlay */}
-        <div className="absolute top-2 left-2 z-10 bg-slate-950/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/20 flex items-center gap-1.5 shadow-md">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-[10px] font-bold text-white">4 Surrounding Safety Hubs Mapped</span>
-        </div>
+        <LiveEmergencyMap
+          userPos={pos}
+          responderPos={responderPos}
+          safetyHubs={safetyHubs}
+          routePoints={route}
+          activeResp={responder}
+          onSelectHub={setSelectedHub}
+          isLocating={isLocating}
+          onLocateMe={handleLocateMe}
+        />
 
         {/* Selected Hub Popup Card */}
         {selectedHub && (
-          <div className="absolute bottom-2 left-2 right-2 z-20 bg-white text-slate-900 p-2.5 rounded-xl shadow-2xl border border-slate-200 flex items-center justify-between animate-fadeIn">
+          <div className="absolute bottom-2 left-2 right-2 z-[1000] bg-white text-slate-900 p-2.5 rounded-xl shadow-2xl border border-slate-200 flex items-center justify-between animate-fadeIn">
             <div className="flex items-center gap-2">
               <span className="text-xl">{selectedHub.icon}</span>
               <div>
@@ -219,12 +146,20 @@ export default function AmbulanceOnTheWayScreen({
                 <p className="text-[10px] text-slate-500">{selectedHub.address} • <strong>{selectedHub.distanceMeters}m away</strong></p>
               </div>
             </div>
-            <button
-              onClick={() => setSelectedHub(null)}
-              className="text-[11px] font-bold text-slate-400 hover:text-slate-800 p-1"
-            >
-              ✕
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => alert(`Dialing ${selectedHub.name} (${selectedHub.phone})...`)}
+                className="px-2 py-1 bg-[#EA3B52] text-white rounded-lg text-[10px] font-bold hover:bg-[#d92d44]"
+              >
+                Call
+              </button>
+              <button
+                onClick={() => setSelectedHub(null)}
+                className="text-[11px] font-bold text-slate-400 hover:text-slate-800 p-1"
+              >
+                ✕
+              </button>
+            </div>
           </div>
         )}
       </div>

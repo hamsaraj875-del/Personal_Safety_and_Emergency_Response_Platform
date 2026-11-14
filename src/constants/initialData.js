@@ -92,20 +92,89 @@ export const VERIFIED_RESPONDERS = [
   }
 ];
 
-// Coordinates representing the scenario shown in the screenshot (Montclair Ave / Elliott St / Newark coordinates)
+// Default Campus Coordinates (BMSCE Campus, Basavanagudi, Bengaluru)
 export const MAP_CONFIG = {
-  center: [40.7635, -74.1725],
-  userPos: [40.7610, -74.1685], // "You are here" marker
-  responderPos: [40.7660, -74.1765], // "1st Responder" marker
-  // Waypoint polyline matching the screenshot's red route
+  center: [12.9416, 77.5655],
+  userPos: [12.9416, 77.5655], // "You are here" marker
+  responderPos: [12.9485, 77.5605], // "1st Responder" marker (~0.9 km local approach)
   routePoints: [
-    [40.7660, -74.1765], // 1st Responder starting point
-    [40.7645, -74.1740],
-    [40.7628, -74.1718],
-    [40.7640, -74.1705],
-    [40.7610, -74.1685]  // You are here
+    [12.9485, 77.5605], // 1st Responder starting point
+    [12.9465, 77.5620],
+    [12.9442, 77.5638],
+    [12.9425, 77.5645],
+    [12.9416, 77.5655]  // You are here
   ]
 };
+
+// Dynamically generate verified responders relative to the user's local GPS coordinates
+export function getNearbyResponders(userCoords) {
+  const uLat = userCoords?.lat || MAP_CONFIG.userPos[0];
+  const uLng = userCoords?.lng || MAP_CONFIG.userPos[1];
+
+  return [
+    {
+      id: "resp_emily_01",
+      name: "Emily Dayton",
+      title: "1st Responder",
+      badge: "Medical & Trauma Certified",
+      etaMinutes: 4,
+      distanceKm: 0.9,
+      rating: 4.95,
+      verified: true,
+      phone: "+91 98123 45678",
+      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
+      skills: ["First Aid", "CPR", "Trauma Response"],
+      location: { lat: uLat + 0.0065, lng: uLng - 0.0050 },
+      explanation: "0.9 km away (4 min ETA) • Local EMS Unit • En Route"
+    },
+    {
+      id: "resp_rajesh_02",
+      name: "Rajesh Kumar",
+      title: "2nd Responder",
+      badge: "Campus Marshal & Escort",
+      etaMinutes: 7,
+      distanceKm: 1.6,
+      rating: 4.90,
+      verified: true,
+      phone: "+91 98234 56789",
+      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80",
+      skills: ["Security Escort", "Physical Safety"],
+      location: { lat: uLat - 0.0075, lng: uLng + 0.0065 },
+      explanation: "1.6 km away (7 min ETA) • Rapid Security Patrol • Backup"
+    },
+    {
+      id: "resp_sarah_03",
+      name: "Dr. Sarah Khan",
+      title: "3rd Responder",
+      badge: "Emergency Medicine Physician",
+      etaMinutes: 11,
+      distanceKm: 2.7,
+      rating: 4.98,
+      verified: true,
+      phone: "+91 98345 67890",
+      avatar: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=256&q=80",
+      skills: ["Advanced Medical", "Triage Specialist"],
+      location: { lat: uLat + 0.0115, lng: uLng + 0.0080 },
+      explanation: "2.7 km away (11 min ETA) • Senior Physician • On-Duty"
+    }
+  ];
+}
+
+// Dynamically generate street-level route waypoints between local responder and user
+export function getLocalRoutePoints(userCoords, responderCoords) {
+  const uLat = userCoords?.lat || MAP_CONFIG.userPos[0];
+  const uLng = userCoords?.lng || MAP_CONFIG.userPos[1];
+  const rLat = responderCoords?.lat || (uLat + 0.0065);
+  const rLng = responderCoords?.lng || (uLng - 0.0050);
+
+  return [
+    { lat: rLat, lng: rLng },
+    { lat: rLat - 0.0020, lng: rLng + 0.0015 },
+    { lat: (rLat + uLat) / 2 + 0.0006, lng: (rLng + uLng) / 2 - 0.0005 },
+    { lat: uLat + 0.0015, lng: uLng - 0.0010 },
+    { lat: uLat, lng: uLng }
+  ];
+}
 
 export const QUICK_CATEGORIES = [
   { id: "medical", label: "Medical", color: "red", icon: "Activity" },
