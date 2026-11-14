@@ -2,6 +2,7 @@ package com.jaagruth.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.jaagruth.data.local.MockDataSource
@@ -11,8 +12,10 @@ import com.jaagruth.data.models.IncidentStatus
 import com.jaagruth.data.models.User
 import com.jaagruth.data.remote.CreateIncidentRequest
 import com.jaagruth.data.remote.LocationPingRequest
+import com.jaagruth.data.remote.LoginRequest
 import com.jaagruth.data.remote.NetworkClient
 import com.jaagruth.data.remote.ResolveIncidentRequest
+import com.jaagruth.data.remote.TokenStore
 import com.jaagruth.model.VerificationResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -71,7 +74,29 @@ class IncidentRepository(private val context: Context) {
 
         if (!isOffline) {
             try {
-                val res = runBlocking(Dispatchers.IO) {
+                // Ensure a valid server JWT token is stored before sending SOS
+                if (TokenStore.getToken().isNullOrEmpty()) {
+                    Log.w("IncidentRepository", "No token found in TokenStore before SOS. Authenticating with server...")
+                    val loginRes = runBlocking(Dispatchers.IO) {
+                        apiService.login(LoginRequest(emailOrPhone = user.phoneNumber.ifBlank { "+91 98765 43210" }, password = "password123"))
+                    }
+                    if (loginRes.isSuccessful && loginRes.body() != null) {
+                        TokenStore.saveToken(loginRes.body()!!.token)
+                        Log.i("IncidentRepository", "Successfully acquired server token for SOS")
+                    } else {
+                        // Fallback to seeded demo citizen to guarantee real token
+                        val demoRes = runBlocking(Dispatchers.IO) {
+                            apiService.login(LoginRequest(emailOrPhone = "+91 98765 43210", password = "password123"))
+                        }
+                        if (demoRes.isSuccessful && demoRes.body() != null) {
+                            TokenStore.saveToken(demoRes.body()!!.token)
+                            Log.i("IncidentRepository", "Acquired demo user token for SOS")
+                        }
+                    }
+                }
+
+                Log.d("IncidentRepository", "Sending SOS to POST /incidents (lat=$latitude, lng=$longitude, clientId=$clientId)...")
+                var res = runBlocking(Dispatchers.IO) {
                     apiService.createIncident(
                         CreateIncidentRequest(
                             lat = latitude,
@@ -82,12 +107,40 @@ class IncidentRepository(private val context: Context) {
                         )
                     )
                 }
+
+                // If 401 unauthorized, refresh token and retry once
+                if (res.code() == 401) {
+                    Log.w("IncidentRepository", "POST /incidents returned 401. Re-authenticating and retrying...")
+                    val relogin = runBlocking(Dispatchers.IO) {
+                        apiService.login(LoginRequest(emailOrPhone = "+91 98765 43210", password = "password123"))
+                    }
+                    if (relogin.isSuccessful && relogin.body() != null) {
+                        TokenStore.saveToken(relogin.body()!!.token)
+                        res = runBlocking(Dispatchers.IO) {
+                            apiService.createIncident(
+                                CreateIncidentRequest(
+                                    lat = latitude,
+                                    lng = longitude,
+                                    address = address,
+                                    clientId = clientId,
+                                    offline = false
+                                )
+                            )
+                        }
+                    }
+                }
+
+                Log.i("IncidentRepository", "POST /incidents response HTTP status: ${res.code()}")
                 if (res.isSuccessful && res.body() != null) {
                     val serverInc = res.body()!!.incident
                     incidentId = serverInc.id
+                    Log.i("IncidentRepository", "SOS incident successfully created on server! ID: $incidentId, status: ${serverInc.status}")
+                } else {
+                    val errBody = res.errorBody()?.string()
+                    Log.e("IncidentRepository", "POST /incidents failed: HTTP ${res.code()} - $errBody")
                 }
             } catch (e: Exception) {
-                // Fallback to offline mode
+                Log.e("IncidentRepository", "POST /incidents network exception: ${e.message}", e)
             }
         }
 

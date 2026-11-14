@@ -118,7 +118,9 @@ export class IncidentService {
       incidentId: incident.id,
       severity: incident.severity,
       duress: false,
-      siren: false,
+      siren: true,
+      title: '🚨 LIVE EMERGENCY SOS ALERT — IMMEDIATE ACTION REQUIRED',
+      message: `Emergency SOS triggered by ${incident.userName} (${incident.userPhone}) at ${incident.address || 'User Location'}`,
       incident
     });
 
